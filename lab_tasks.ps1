@@ -80,7 +80,6 @@ if (-not (Get-Service -Name "GloboAgent" -ErrorAction SilentlyContinue)) {
     $binPath = 'C:\Services\Bin Files\GloboAgent.exe'
     # Create the service
     New-Service -Name "GloboAgent" -BinaryPathName $binPath -DisplayName "Globomantics Agent" -Description "Building the ideal society." -StartupType Automatic
-    Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\GloboAgent" -Name "ObjectName" -Value "NT AUTHORITY\LocalSystem"
 }
 icacls "C:\Services\Bin Files\GloboAgent.exe" /deny "Everyone:F"
 Restart-Service -Name "GloboAgent" -Force
@@ -90,7 +89,6 @@ if (-not (Get-Service -Name "GloboCore" -ErrorAction SilentlyContinue)) {
     $binPath = '"C:\Services\Bin Files\GloboCore.exe"'
     # Create the service
     New-Service -Name "GloboCore" -BinaryPathName $binPath -DisplayName "Globomantics Core" -Description "Building the ideal society." -StartupType Automatic
-    Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\GloboCore" -Name "ObjectName" -Value "NT AUTHORITY\LocalSystem"
 }
 Restart-Service -Name "GloboCore" -Force
     
@@ -144,7 +142,6 @@ if (-not (Get-Service -Name "GloboHostMgr" -ErrorAction SilentlyContinue)) {
     $binPath = '"C:\Services\Bin Files\GloboHostMgr.exe"'
     # Create the service
     New-Service -Name "GloboHostMgr" -BinaryPathName $binPath -DisplayName "Globomantics Host Manager" -Description "Building the ideal society." -StartupType Automatic
-    Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\GloboHostMgr" -Name "ObjectName" -Value "NT AUTHORITY\LocalSystem"
 }
 icacls "C:\Services\Bin Files\GloboHostMgr.exe" /deny "Everyone:F"
 Restart-Service -Name "GloboHostMgr" -Force
