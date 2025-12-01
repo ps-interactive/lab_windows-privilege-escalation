@@ -1,7 +1,7 @@
 # WARNING!
 # NOTE for learners:
 #
-# This script is used to simulate user activities.
+# This script is used to simulate privilege escalation opportunities.
 #
 # If you read this file after privesc it will reveal vulnerabilities and credentials
 # You are only cheating yourself! :-)
