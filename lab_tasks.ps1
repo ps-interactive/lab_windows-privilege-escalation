@@ -1,7 +1,7 @@
 # WARNING!
 # NOTE for learners:
 #
-# This script is used to simulate privilege escalation opportunities.
+# This script is used to simulate user activities.
 #
 # If you read this file after privesc it will reveal vulnerabilities and credentials
 # You are only cheating yourself! :-)
@@ -54,6 +54,8 @@ $Password = "ItsColdOutside!"
 Invoke-Command -ComputerName 127.0.0.1 -Credential (New-Object System.Management.Automation.PSCredential($Username,(ConvertTo-SecureString $Password -AsPlainText -Force)))
 '@
 
+New-Item -Path "C:\Users\jack.frost\AppData\Roaming\Microsoft\Windows\PowerShell\PSReadLine\" -ItemType Directory -Force 
+
 $Cred = New-Object System.Management.Automation.PSCredential(".\jack.frost", $Password)
 Start-Process -Credential $Cred -FilePath "cmd.exe" -ArgumentList "/c exit" -LoadUserProfile -Wait
 Set-Content -Path "C:\Users\jack.frost\AppData\Roaming\Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt" -Value @'
@@ -81,6 +83,7 @@ if (-not (Get-Service -Name "GloboAgent" -ErrorAction SilentlyContinue)) {
     Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\GloboAgent" -Name "ObjectName" -Value "NT AUTHORITY\LocalSystem"
 }
 icacls "C:\Services\Bin Files\GloboAgent.exe" /deny "Everyone:F"
+Restart-Service -Name "GloboAgent" -Force
 
 # Vuln 5 - Service Binary/Registry Writeable
 if (-not (Get-Service -Name "GloboCore" -ErrorAction SilentlyContinue)) {
@@ -89,6 +92,7 @@ if (-not (Get-Service -Name "GloboCore" -ErrorAction SilentlyContinue)) {
     New-Service -Name "GloboCore" -BinaryPathName $binPath -DisplayName "Globomantics Core" -Description "Building the ideal society." -StartupType Automatic
     Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\GloboCore" -Name "ObjectName" -Value "NT AUTHORITY\LocalSystem"
 }
+Restart-Service -Name "GloboCore" -Force
     
 # Vuln 6 - Insecure File/Folder Permissions (change bat file)
 # Vuln 7 - Misconfigured Scheduled Tasks (make task vulnerable)
@@ -143,6 +147,7 @@ if (-not (Get-Service -Name "GloboHostMgr" -ErrorAction SilentlyContinue)) {
     Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\GloboHostMgr" -Name "ObjectName" -Value "NT AUTHORITY\LocalSystem"
 }
 icacls "C:\Services\Bin Files\GloboHostMgr.exe" /deny "Everyone:F"
+Restart-Service -Name "GloboHostMgr" -Force
 
 # Vuln 10 - Token Impersonation
 if(-not (Get-WindowsFeature -Name Web-Server).Installed) {
