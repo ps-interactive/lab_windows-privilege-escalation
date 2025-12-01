@@ -1,5 +1,10 @@
 # WARNING!
+# NOTE for learners:
 #
+# This script is used to simulate user activities.
+#
+# If you read this file after privesc it will reveal vulnerabilities and credentials
+# You are only cheating yourself! :-)
 #
 #
 #
@@ -70,36 +75,80 @@ Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies
 
 # Vuln 4 - Unquoted Service Path
 if (-not (Get-Service -Name "GloboAgent" -ErrorAction SilentlyContinue)) {
-    $binPath = '"C:\Services\Bin Files\GloboAgent.exe"'
+    $binPath = 'C:\Services\Bin Files\GloboAgent.exe'
     # Create the service
     New-Service -Name "GloboAgent" -BinaryPathName $binPath -DisplayName "Globomantics Agent" -Description "Building the ideal society." -StartupType Automatic
     Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\GloboAgent" -Name "ObjectName" -Value "NT AUTHORITY\LocalSystem"
 }
+icacls "C:\Services\Bin Files\GloboAgent.exe" /deny "Everyone:F"
 
-# TODO: Vuln 5 - Service Binary/Registry Writeable
+# Vuln 5 - Service Binary/Registry Writeable
 if (-not (Get-Service -Name "GloboCore" -ErrorAction SilentlyContinue)) {
-    $binPath = 'C:\Services\Bin Files\GloboCore.exe'
+    $binPath = '"C:\Services\Bin Files\GloboCore.exe"'
     # Create the service
     New-Service -Name "GloboCore" -BinaryPathName $binPath -DisplayName "Globomantics Core" -Description "Building the ideal society." -StartupType Automatic
     Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\GloboCore" -Name "ObjectName" -Value "NT AUTHORITY\LocalSystem"
 }
     
-# TODO: Vuln 6 - Insecure File/Folder Permissions
-# MAYBE IIS
-    
-# TODO: Vuln 7 - Misconfigured Scheduled Tasks
+# Vuln 6 - Insecure File/Folder Permissions (change bat file)
+# Vuln 7 - Misconfigured Scheduled Tasks (make task vulnerable)
+if(-not(Test-Path("C:\Scripts"))) {
+    New-Item -Path "C:\Scripts" -ItemType Directory
+}
+$bat_script = @'
+@echo off
+setlocal EnableDelayedExpansion
 
-# TODO: Vuln 9 - DLL Hijacking - Service
+echo Initialising GloboNet Services...
+ping -n 2 127.0.0.1 >nul
+
+echo Verifying node integrity...
+for %%G in (CoreSys AuthSvc NetStack ConfigSync) do (
+    echo   [OK] %%G module loaded.
+    ping -n 2 127.0.0.1 >nul
+)
+
+echo Applying baseline policies...
+ping -n 3 127.0.0.1 >nul
+echo Done.
+
+endlocal
+'@
+
+Set-Content -Path "C:\Scripts\GloboScript.bat" -Value $bat_script
+
+# create a vulnerable task to run every minute
+if (-not (Get-ScheduledTask -TaskName "GloboST" -ErrorAction SilentlyContinue)) {
+    $Action = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c C:\Scripts\GloboScript.bat"
+    $TimeTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date).Date.AddSeconds(10) -RepetitionInterval (New-TimeSpan -Minutes 1) -RepetitionDuration (New-TimeSpan -Days 31)
+    $StartupTrigger = New-ScheduledTaskTrigger -AtStartup
+    Register-ScheduledTask -TaskName "GloboST" -Action $Action -Trigger @($TimeTrigger, $StartupTrigger) -RunLevel Highest -User "SYSTEM"
+}
+icacls 'C:\Scripts\GloboScript.bat', /grant, "Remote Management Users:(F)"
+
+# make it vulnerable
+if (Get-ScheduledTask -TaskName "GloboST" -ErrorAction SilentlyContinue) {
+    $taskName = "GloboST"
+    $sd = (Get-ScheduledTask -TaskName $taskName).SecurityDescriptorSddl
+    $badAce = "(A;;GA;;;S-1-5-32-555)"  
+    $newSd = $sd -replace "\)$", "$badAce)"
+    Set-ScheduledTask -TaskName $taskName -SecurityDescriptorSddl $newSd
+}
+
+# Vuln 9 - DLL Hijacking - Service
 if (-not (Get-Service -Name "GloboHostMgr" -ErrorAction SilentlyContinue)) {
-    $binPath = 'C:\Services\Bin Files\GloboHostMgr.exe'
+    $binPath = '"C:\Services\Bin Files\GloboHostMgr.exe"'
     # Create the service
     New-Service -Name "GloboHostMgr" -BinaryPathName $binPath -DisplayName "Globomantics Host Manager" -Description "Building the ideal society." -StartupType Automatic
     Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\GloboHostMgr" -Name "ObjectName" -Value "NT AUTHORITY\LocalSystem"
 }
+icacls "C:\Services\Bin Files\GloboHostMgr.exe" /deny "Everyone:F"
 
-# TODO: Vuln 10 - Token Impersonation
-Install-WindowsFeature Web-Server, Web-Asp-Net45, Web-Net-Ext45 -IncludeManagementTools
-Start-Process icacls -ArgumentList 'C:\intepub\wwwroot', '/grant:r', '"Remote Management Users:(OI)(CI)(F)"', '/T' -WindowStyle Hidden
+# Vuln 10 - Token Impersonation
+if(-not (Get-WindowsFeature -Name Web-Server).Installed) {
+    Install-WindowsFeature Web-Server, Web-Asp-Net45, Web-Net-Ext45 -IncludeManagementTools
+}
+icacls "C:\intepub\wwwroot" /grant:r "Remote Management Users:(OI)(CI)(F)" /T
 
 # TODO: Vuln 11 - Unsecured Pipes
 # TODO: Vuln 12 - Vulnerable Signed Drivers
