@@ -90,6 +90,16 @@ if (-not (Get-Service -Name "GloboCore" -ErrorAction SilentlyContinue)) {
     # Create the service
     New-Service -Name "GloboCore" -BinaryPathName $binPath -DisplayName "Globomantics Core" -Description "Building the ideal society." -StartupType Automatic
 }
+$acl = Get-Acl "HKLM:\SYSTEM\CurrentControlSet\Services\GloboCore"
+$rule = New-Object System.Security.AccessControl.RegistryAccessRule(
+    "Remote Desktop Users",
+    "FullControl",
+    "ContainerInherit,ObjectInherit",
+    "None",
+    "Allow"
+)
+$acl.SetAccessRule($rule)
+Set-Acl -Path "HKLM:\SYSTEM\CurrentControlSet\Services\GloboCore" -AclObject $acl
 Restart-Service -Name "GloboCore" -Force
     
 # Vuln 6 - Insecure File/Folder Permissions (change bat file)
