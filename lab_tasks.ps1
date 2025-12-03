@@ -163,7 +163,7 @@ Restart-Service -Name "GloboHostMgr" -Force
 if(-not (Get-WindowsFeature -Name Web-Server).Installed) {
     Install-WindowsFeature Web-Server, Web-Asp-Net45, Web-Net-Ext45 -IncludeManagementTools
 }
-icacls "C:\intepub\wwwroot" /grant:r "Remote Management Users:(OI)(CI)(F)" /T
+icacls "C:\intepub\wwwroot" /grant "Remote Management Users:(F)"
 
 # TODO: Vuln 11 - Unsecured Pipes
 # TODO: Vuln 12 - Vulnerable Signed Drivers
