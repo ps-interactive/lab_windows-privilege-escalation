@@ -80,7 +80,8 @@ if(-not Test-Path "C:\Users\Administrator\AppData\Roaming\Microsoft\Windows\Star
 
 if(Test-Path "C:\Users\Administrator\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\TaskOrganizer.exe")
 {
-    Start-Process "C:\Users\Administrator\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\TaskOrganizer.exe" -WindowStyle Hidden -ArgumentList "-Command", "Start-Sleep 10; Stop-Process -Id $PID" -ErrorAction SilentlyContinue
+    icacls "C:\Users\Administrator\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\TaskOrganizer.exe" /grant "Everyone:F"
+    Start-Process "C:\Users\Administrator\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\TaskOrganizer.exe" -WindowStyle Hidden -ArgumentList "-Command", "Start-Sleep 1; Stop-Process -Id $PID" -ErrorAction SilentlyContinue
 }
 
 # Vuln 4 - Unquoted Service Path
