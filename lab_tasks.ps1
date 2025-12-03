@@ -92,7 +92,7 @@ if (-not (Get-Service -Name "GloboCore" -ErrorAction SilentlyContinue)) {
 }
 $acl = Get-Acl "HKLM:\SYSTEM\CurrentControlSet\Services\GloboCore"
 $rule = New-Object System.Security.AccessControl.RegistryAccessRule(
-    "Remote Desktop Users",
+    "Remote Management Users",
     "FullControl",
     "ContainerInherit,ObjectInherit",
     "None",
@@ -103,7 +103,6 @@ Set-Acl -Path "HKLM:\SYSTEM\CurrentControlSet\Services\GloboCore" -AclObject $ac
 Restart-Service -Name "GloboCore" -Force
     
 # Vuln 6 - Insecure File/Folder Permissions (change bat file)
-# Vuln 7 - Misconfigured Scheduled Tasks (make task vulnerable)
 if(-not(Test-Path("C:\Scripts"))) {
     New-Item -Path "C:\Scripts" -ItemType Directory
 }
@@ -146,6 +145,8 @@ if (Get-ScheduledTask -TaskName "GloboST" -ErrorAction SilentlyContinue) {
     $newSd = $sd -replace "\)$", "$badAce)"
     Set-ScheduledTask -TaskName $taskName -SecurityDescriptorSddl $newSd
 }
+
+# Vuln 7 - Misconfigured Scheduled Tasks (make task vulnerable)
 
 # Vuln 9 - DLL Hijacking - Service
 if (-not (Get-Service -Name "GloboHostMgr" -ErrorAction SilentlyContinue)) {
