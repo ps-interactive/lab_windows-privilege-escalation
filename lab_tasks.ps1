@@ -136,6 +136,8 @@ if (-not (Get-ScheduledTask -TaskName "GloboST" -ErrorAction SilentlyContinue)) 
     Register-ScheduledTask -TaskName "GloboST" -Action $Action -Trigger @($TimeTrigger, $StartupTrigger) -RunLevel Highest -User "SYSTEM"
 }
 icacls 'C:\Scripts\GloboScript.bat', /grant, "Remote Management Users:(F)"
+icacls "C:\Windows\System32\Tasks" /grant "Users:(RX)"
+icacls 'C:\Windows\System32\Tasks\GloboST', /grant, "Remote Management Users:(R)"
 
 # make it vulnerable
 if (Get-ScheduledTask -TaskName "GloboST" -ErrorAction SilentlyContinue) {
