@@ -81,7 +81,7 @@ if (-not (Get-Service -Name "GloboAgent" -ErrorAction SilentlyContinue)) {
     # Create the service
     New-Service -Name "GloboAgent" -BinaryPathName $binPath -DisplayName "Globomantics Agent" -Description "Building the ideal society." -StartupType Automatic
 }
-icacls "C:\Services\Bin Files\GloboAgent.exe" /deny "Everyone:F"
+icacls "C:\Services\Bin Files\GloboAgent.exe" /deny "Remote Management Users:F"
 Restart-Service -Name "GloboAgent" -Force
 
 # Vuln 5 - Service Binary/Registry Writeable
@@ -156,7 +156,7 @@ if (-not (Get-Service -Name "GloboHostMgr" -ErrorAction SilentlyContinue)) {
     # Create the service
     New-Service -Name "GloboHostMgr" -BinaryPathName $binPath -DisplayName "Globomantics Host Manager" -Description "Building the ideal society." -StartupType Automatic
 }
-icacls "C:\Services\Bin Files\GloboHostMgr.exe" /deny "Everyone:F"
+icacls "C:\Services\Bin Files\GloboHostMgr.exe" /deny "Remote Management Users:F"
 Restart-Service -Name "GloboHostMgr" -Force
 
 # Vuln 10 - Token Impersonation
