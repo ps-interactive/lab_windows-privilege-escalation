@@ -158,7 +158,23 @@ if (Get-ScheduledTask -TaskName "GloboST" -ErrorAction SilentlyContinue) {
     Set-ScheduledTask -TaskName $taskName -SecurityDescriptorSddl $newSd
 }
 
-# Vuln 7 - Misconfigured Scheduled Tasks (make task vulnerable)
+# Vuln 7 - Misconfigured Privileges
+$user = "jack.frost"
+$tempCfg = "$env:TEMP\secpol_temp.cfg"
+secedit /export /cfg $tempCfg /areas USER_RIGHTS | Out-Null
+$content = Get-Content $tempCfg
+$priv = "SeDebugPrivilege"
+$lineIndex = $content.IndexOf($content | Where-Object { $_ -match "^$priv" })
+if ($lineIndex -ge 0) {
+    if ($content[$lineIndex] -notmatch $user) {
+        $content[$lineIndex] += ",$user"
+    }
+}
+else {
+    $content += "$priv = $user"
+}
+Set-Content $tempCfg $content
+secedit /configure /db C:\Windows\security\local.sdb /cfg $tempCfg /areas USER_RIGHTS | Out-Null
 
 # Vuln 9 - DLL Hijacking - Service
 if (-not (Get-Service -Name "GloboHostMgr" -ErrorAction SilentlyContinue)) {
