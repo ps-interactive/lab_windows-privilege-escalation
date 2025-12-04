@@ -67,11 +67,13 @@ $pscred = New-Object System.Management.Automation.PSCredential($stored.UserName,
 $pscred
 '@
 
-# Vuln 2 - UAC Bypass
-Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' `
--Name 'ConsentPromptBehaviorAdmin' -Value 2
-Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' `
--Name 'PromptOnSecureDesktop' -Value 0
+# Vuln 2 - UAC Bypass (fodhelper hijack setup)
+Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -Name 'ConsentPromptBehaviorAdmin' -Value 5
+Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -Name 'PromptOnSecureDesktop' -Value 1
+
+New-Item -Path "HKLM:\SOFTWARE\Classes\ms-settings\Shell\Open\command" -Force | Out-Null
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Classes\ms-settings\Shell\Open\command" -Name "(Default)" -Value "C:\Windows\System32\cmd.exe"
+New-ItemProperty -Path "HKLM:\SOFTWARE\Classes\ms-settings\Shell\Open\command" -Name "DelegateExecute" -Value "" -PropertyType String -Force | Out-Null
 
 # Vuln 3 - Unsecured Startup Application
 if(-not Test-Path "C:\Users\Administrator\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\TaskOrganizer.exe") {
@@ -159,7 +161,7 @@ if (Get-ScheduledTask -TaskName "GloboST" -ErrorAction SilentlyContinue) {
 }
 
 # Vuln 7 - Misconfigured Privileges
-$user = "jack.frost"
+$user = "ps-win-1\jack.frost"
 $tempCfg = "$env:TEMP\secpol_temp.cfg"
 secedit /export /cfg $tempCfg /areas USER_RIGHTS | Out-Null
 $content = Get-Content $tempCfg
@@ -176,7 +178,7 @@ else {
 Set-Content $tempCfg $content
 secedit /configure /db C:\Windows\security\local.sdb /cfg $tempCfg /areas USER_RIGHTS | Out-Null
 
-# Vuln 9 - DLL Hijacking - Service
+# Vuln 8 - DLL Hijacking - Service
 if (-not (Get-Service -Name "GloboHostMgr" -ErrorAction SilentlyContinue)) {
     $binPath = '"C:\Services\Bin Files\GloboHostMgr.exe"'
     # Create the service
@@ -185,11 +187,13 @@ if (-not (Get-Service -Name "GloboHostMgr" -ErrorAction SilentlyContinue)) {
 icacls "C:\Services\Bin Files\GloboHostMgr.exe" /deny "Remote Management Users:F"
 Restart-Service -Name "GloboHostMgr" -Force
 
-# Vuln 10 - Token Impersonation
+# Vuln 9 - Token Impersonation
 if(-not (Get-WindowsFeature -Name Web-Server).Installed) {
     Install-WindowsFeature Web-Server, Web-Asp-Net45, Web-Net-Ext45 -IncludeManagementTools
 }
 icacls "C:\intepub\wwwroot" /grant "Remote Management Users:(F)"
 
-# TODO: Vuln 11 - Unsecured Pipes
-# TODO: Vuln 12 - Vulnerable Signed Drivers
+# Vuln 10 - Vulnerable Signed Drivers
+if (-not (Get-Service -Name "MSI" -ErrorAction SilentlyContinue)) {
+    & sc.exe create MSI type= kernel binPath= $driverPath | Out-Null
+}
