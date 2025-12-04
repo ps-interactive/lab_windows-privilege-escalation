@@ -195,5 +195,9 @@ icacls "C:\intepub\wwwroot" /grant "Remote Management Users:(F)"
 
 # Vuln 10 - Vulnerable Signed Drivers
 if (-not (Get-Service -Name "MSI" -ErrorAction SilentlyContinue)) {
-    & sc.exe create MSI type= kernel binPath= $driverPath | Out-Null
+    & sc.exe create MSI type= kernel binPath= C:\Windows\Scripts\MSIO64.sys | Out-Null
+}
+
+if (Get-Service -Name "MSI" -ErrorAction SilentlyContinue) {
+    Start-Service -Name "MSI" -Force
 }
