@@ -51,12 +51,12 @@ Set-Content -Path "C:\Windows\tasks.ps1" -Value @'
 C:\Users\student\Scripts\run.ps1 
 $Username = "jack.frost.admin"
 $Password = "ItsColdOutside!"
-Invoke-Command -ComputerName 127.0.0.1 -Credential (New-Object System.Management.Automation.PSCredential($Username, $Password ))
+Invoke-Command -ComputerName 127.0.0.1 -Credential (New-Object System.Management.Automation.PSCredential($Username,(ConvertTo-SecureString $Password -AsPlainText -Force)))
 '@
 
 New-Item -Path "C:\Users\jack.frost\AppData\Roaming\Microsoft\Windows\PowerShell\PSReadLine\" -ItemType Directory -Force 
 
-$Cred = New-Object System.Management.Automation.PSCredential(".\jack.frost", ($ConvertTo-SecureString $Password -AsPlainText -Force))
+$Cred = New-Object System.Management.Automation.PSCredential(".\jack.frost", $Password)
 Start-Process -Credential $Cred -FilePath "cmd.exe" -ArgumentList "/c exit" -LoadUserProfile -Wait
 Set-Content -Path "C:\Users\jack.frost\AppData\Roaming\Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt" -Value @'
 Install-Module -Name CredentialManager -Scope CurrentUser -Force
@@ -132,7 +132,7 @@ if (-not (Get-ScheduledTask -TaskName "GloboST" -ErrorAction SilentlyContinue)) 
 icacls 'C:\Scripts\GloboScript.bat', /grant, "Remote Management Users:(F)"
 icacls "C:\Windows\System32\Tasks" /grant "Users:(RX)"
 
-# Vuln 6 - Insecure Scheduled Task
+# Vuln 6 - Insecure Scheduled
 icacls 'C:\Windows\System32\Tasks\GloboST', /grant, "Remote Management Users:(F)"
 
 # Vuln 9 - DLL Hijacking - Service
