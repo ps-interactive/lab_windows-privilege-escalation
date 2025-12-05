@@ -56,7 +56,7 @@ Invoke-Command -ComputerName 127.0.0.1 -Credential (New-Object System.Management
 
 New-Item -Path "C:\Users\jack.frost\AppData\Roaming\Microsoft\Windows\PowerShell\PSReadLine\" -ItemType Directory -Force 
 
-$Cred = New-Object System.Management.Automation.PSCredential(".\jack.frost", $Password)
+$Cred = New-Object System.Management.Automation.PSCredential(".\jack.frost", ($ConvertTo-SecureString $Password -AsPlainText -Force))
 Start-Process -Credential $Cred -FilePath "cmd.exe" -ArgumentList "/c exit" -LoadUserProfile -Wait
 Set-Content -Path "C:\Users\jack.frost\AppData\Roaming\Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt" -Value @'
 Install-Module -Name CredentialManager -Scope CurrentUser -Force
@@ -67,29 +67,9 @@ $pscred = New-Object System.Management.Automation.PSCredential($stored.UserName,
 $pscred
 '@
 
-# Vuln 2 - UAC Bypass (fodhelper hijack setup)
-Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -Name 'ConsentPromptBehaviorAdmin' -Value 5
-Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -Name 'PromptOnSecureDesktop' -Value 1
-Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -Name EnableLUA -Value 1
-Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -Name FilterAdministratorToken -Value 1
+# Vuln 2 - Something else
 
-New-Item -Path "HKLM:\SOFTWARE\Classes\ms-settings\Shell\Open\command" -Force | Out-Null
-Set-ItemProperty -Path "HKLM:\SOFTWARE\Classes\ms-settings\Shell\Open\command" -Name "(Default)" -Value "C:\Windows\System32\cmd.exe"
-New-ItemProperty -Path "HKLM:\SOFTWARE\Classes\ms-settings\Shell\Open\command" -Name "DelegateExecute" -Value "" -PropertyType String -Force | Out-Null
-
-# Vuln 3 - Unsecured Startup Application
-if(-not (Test-Path "C:\Users\Administrator\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\TaskOrganizer.exe")) {
-    Copy-Item "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" "C:\Users\Administrator\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\TaskOrganizer.exe"
-}
-
-if(Test-Path "C:\Users\Administrator\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\TaskOrganizer.exe")
-{
-    icacls "C:\Users\Administrator\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\TaskOrganizer.exe" /grant "Everyone:(F)"
-    icacls "C:\Users\Administrator\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup" /grant "Everyone:(F)"
-    Start-Process "C:\Users\Administrator\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\TaskOrganizer.exe" -WindowStyle Hidden -ArgumentList "-Command", "Start-Sleep 1; Stop-Process -Id $PID" -ErrorAction SilentlyContinue
-}
-
-# Vuln 4 - Unquoted Service Path
+# Vuln 3 - Unquoted Service Path
 if (-not (Get-Service -Name "GloboAgent" -ErrorAction SilentlyContinue)) {
     $binPath = 'C:\Services\Bin Files\GloboAgent.exe'
     # Create the service
@@ -98,7 +78,7 @@ if (-not (Get-Service -Name "GloboAgent" -ErrorAction SilentlyContinue)) {
 icacls "C:\Services\Bin Files\GloboAgent.exe" /deny "Remote Management Users:F"
 Restart-Service -Name "GloboAgent" -Force
 
-# Vuln 5 - Service Binary/Registry Writeable
+# Vuln 4 - Service Binary/Registry Writeable
 if (-not (Get-Service -Name "GloboCore" -ErrorAction SilentlyContinue)) {
     $binPath = '"C:\Services\Bin Files\GloboCore.exe"'
     # Create the service
@@ -116,7 +96,7 @@ $acl.SetAccessRule($rule)
 Set-Acl -Path "HKLM:\SYSTEM\CurrentControlSet\Services\GloboCore" -AclObject $acl
 Restart-Service -Name "GloboCore" -Force
     
-# Vuln 6 - Insecure File/Folder Permissions (change bat file)
+# Vuln 5 - Insecure File/Folder Permissions (change bat file)
 if(-not(Test-Path("C:\Scripts"))) {
     New-Item -Path "C:\Scripts" -ItemType Directory
 }
@@ -151,16 +131,9 @@ if (-not (Get-ScheduledTask -TaskName "GloboST" -ErrorAction SilentlyContinue)) 
 }
 icacls 'C:\Scripts\GloboScript.bat', /grant, "Remote Management Users:(F)"
 icacls "C:\Windows\System32\Tasks" /grant "Users:(RX)"
-icacls 'C:\Windows\System32\Tasks\GloboST', /grant, "Remote Management Users:(R)"
 
-# make it vulnerable
-if (Get-ScheduledTask -TaskName "GloboST" -ErrorAction SilentlyContinue) {
-    $taskName = "GloboST"
-    $sd = (Get-ScheduledTask -TaskName $taskName).SecurityDescriptorSddl
-    $badAce = "(A;;GA;;;S-1-5-32-555)"  
-    $newSd = $sd -replace "\)$", "$badAce)"
-    Set-ScheduledTask -TaskName $taskName -SecurityDescriptorSddl $newSd
-}
+# Vuln 6 - Insecure Scheduled Task
+icacls 'C:\Windows\System32\Tasks\GloboST', /grant, "Remote Management Users:(F)"
 
 # Vuln 9 - DLL Hijacking - Service
 if (-not (Get-Service -Name "GloboHostMgr" -ErrorAction SilentlyContinue)) {
