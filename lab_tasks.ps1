@@ -160,25 +160,7 @@ if (Get-ScheduledTask -TaskName "GloboST" -ErrorAction SilentlyContinue) {
     Set-ScheduledTask -TaskName $taskName -SecurityDescriptorSddl $newSd
 }
 
-# Vuln 7 - Misconfigured Privileges
-$user = "ps-win-1\jack.frost"
-$tempCfg = "$env:TEMP\secpol_temp.cfg"
-secedit /export /cfg $tempCfg /areas USER_RIGHTS | Out-Null
-$content = Get-Content $tempCfg
-$priv = "SeDebugPrivilege"
-$lineIndex = $content.IndexOf($content | Where-Object { $_ -match "^$priv" })
-if ($lineIndex -ge 0) {
-    if ($content[$lineIndex] -notmatch $user) {
-        $content[$lineIndex] += ",$user"
-    }
-}
-else {
-    $content += "$priv = $user"
-}
-Set-Content $tempCfg $content
-secedit /configure /db C:\Windows\security\local.sdb /cfg $tempCfg /areas USER_RIGHTS | Out-Null
-
-# Vuln 8 - DLL Hijacking - Service
+# Vuln 9 - DLL Hijacking - Service
 if (-not (Get-Service -Name "GloboHostMgr" -ErrorAction SilentlyContinue)) {
     $binPath = '"C:\Services\Bin Files\GloboHostMgr.exe"'
     # Create the service
@@ -187,17 +169,8 @@ if (-not (Get-Service -Name "GloboHostMgr" -ErrorAction SilentlyContinue)) {
 icacls "C:\Services\Bin Files\GloboHostMgr.exe" /deny "Remote Management Users:F"
 Restart-Service -Name "GloboHostMgr" -Force
 
-# Vuln 9 - Token Impersonation
+# Vuln 10 - Token Impersonation
 if(-not (Get-WindowsFeature -Name Web-Server).Installed) {
     Install-WindowsFeature Web-Server, Web-Asp-Net45, Web-Net-Ext45 -IncludeManagementTools
 }
 icacls "C:\intepub\wwwroot" /grant "Remote Management Users:(F)"
-
-# Vuln 10 - Vulnerable Signed Drivers
-if (-not (Get-Service -Name "MSI" -ErrorAction SilentlyContinue)) {
-    & sc.exe create MSI type= kernel binPath= C:\Windows\Scripts\MSIO64.sys | Out-Null
-}
-
-if (Get-Service -Name "MSI" -ErrorAction SilentlyContinue) {
-    Start-Service -Name "MSI" -Force
-}
