@@ -70,6 +70,8 @@ $pscred
 # Vuln 2 - UAC Bypass (fodhelper hijack setup)
 Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -Name 'ConsentPromptBehaviorAdmin' -Value 5
 Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -Name 'PromptOnSecureDesktop' -Value 1
+Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -Name EnableLUA -Value 1
+Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -Name FilterAdministratorToken -Value 1
 
 New-Item -Path "HKLM:\SOFTWARE\Classes\ms-settings\Shell\Open\command" -Force | Out-Null
 Set-ItemProperty -Path "HKLM:\SOFTWARE\Classes\ms-settings\Shell\Open\command" -Name "(Default)" -Value "C:\Windows\System32\cmd.exe"
