@@ -1,7 +1,7 @@
 # WARNING!
 # NOTE for learners:
 #
-# This script is used to simulate user activities.
+# This script is used to simulate user activities and vulnerabilities.
 #
 # If you read this file it will reveal vulnerabilities and credentials
 # You are only cheating yourself! :-)
