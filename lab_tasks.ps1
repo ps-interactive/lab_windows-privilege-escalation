@@ -3,7 +3,7 @@
 #
 # This script is used to simulate user activities.
 #
-# If you read this file after privesc it will reveal vulnerabilities and credentials
+# If you read this file it will reveal vulnerabilities and credentials
 # You are only cheating yourself! :-)
 #
 #
