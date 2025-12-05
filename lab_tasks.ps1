@@ -51,7 +51,7 @@ Set-Content -Path "C:\Windows\tasks.ps1" -Value @'
 C:\Users\student\Scripts\run.ps1 
 $Username = "jack.frost.admin"
 $Password = "ItsColdOutside!"
-Invoke-Command -ComputerName 127.0.0.1 -Credential (New-Object System.Management.Automation.PSCredential($Username,(ConvertTo-SecureString $Password -AsPlainText -Force)))
+Invoke-Command -ComputerName 127.0.0.1 -Credential (New-Object System.Management.Automation.PSCredential($Username, $Password ))
 '@
 
 New-Item -Path "C:\Users\jack.frost\AppData\Roaming\Microsoft\Windows\PowerShell\PSReadLine\" -ItemType Directory -Force 
