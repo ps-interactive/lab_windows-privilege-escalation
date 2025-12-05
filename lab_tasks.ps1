@@ -78,7 +78,7 @@ Set-ItemProperty -Path "HKLM:\SOFTWARE\Classes\ms-settings\Shell\Open\command" -
 New-ItemProperty -Path "HKLM:\SOFTWARE\Classes\ms-settings\Shell\Open\command" -Name "DelegateExecute" -Value "" -PropertyType String -Force | Out-Null
 
 # Vuln 3 - Unsecured Startup Application
-if(-not Test-Path "C:\Users\Administrator\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\TaskOrganizer.exe") {
+if(-not (Test-Path "C:\Users\Administrator\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\TaskOrganizer.exe")) {
     Copy-Item "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" "C:\Users\Administrator\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\TaskOrganizer.exe"
 }
 
