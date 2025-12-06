@@ -68,9 +68,9 @@ $pscred
 '@
 
 # Vuln 2 - Insecure Logon Script
-if(-not (Get-Path "C:\Services\Bin Files\AdminTools.exe")) {
+if(-not (Test-Path "C:\Services\Bin Files\AdminTools.exe")) {
     Copy-Item "C:\Windows\System32\cmd.exe" "C:\Services\Bin Files\AdminTools.exe"
-    $publicDesktop = "C:\Users\Public\Public Documents"
+    $publicDesktop = "C:\Users\Default\Desktop\"
     $shortcutPath = Join-Path $publicDesktop "Admin Tools.lnk"
 
     $ws = New-Object -ComObject WScript.Shell
@@ -83,18 +83,20 @@ if(-not (Get-Path "C:\Services\Bin Files\AdminTools.exe")) {
 
     icacls "C:\Services\Bin Files\AdminTools.exe" /inheritance:r /grant:r "Administrators:F" "SYSTEM:F" /deny "Users:W" | Out-Null
     icacls "$shortcutPath" /grant "Everyone:F" | Out-Null
+    icacls "$publicDesktop" /grant "Everyone:F" | Out-Null
 }
 
-if(Get-Path "C:\Services\Bin Files\AdminTools.exe") {
+if(Test-Path "C:\Services\Bin Files\AdminTools.exe") {
     $user = "ps-win-1\jack.frost.admin"
     $pass = ConvertTo-SecureString "FrostyTheAdmin!" -AsPlainText -Force
     $cred = New-Object System.Management.Automation.PSCredential($user,$pass)
-    $lnk = 'C:\Users\Public\Public Documents\Admin Tools.lnk'
+    $lnk = 'C:\Users\Default\Desktop\Admin Tools.lnk'
 
-    Start-Process -FilePath "powershell.exe" -Credential $cred -ArgumentList @(
+    Start-Process -FilePath "powershell.exe" -Credential $Cred -ArgumentList @(
         "-NoProfile",
+        "-NoExit",
         "-WindowStyle Hidden",
-        "-Command ""(New-Object -ComObject WScript.Shell).Run('$lnk')"""
+        "-Command ""Invoke-Item '$Lnk'; Start-Sleep 10; exit"""
     )
 }
 
