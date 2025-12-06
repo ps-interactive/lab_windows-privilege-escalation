@@ -50,7 +50,7 @@ if (-not (Get-LocalUser -Name "jack.frost" -ErrorAction SilentlyContinue)) {
 Set-Content -Path "C:\Windows\tasks.ps1" -Value @'
 C:\Users\student\Scripts\run.ps1 
 $Username = "jack.frost.admin"
-$Password = "ItsColdOutside!"
+$Password = "FrostyTheAdmin!"
 Invoke-Command -ComputerName 127.0.0.1 -Credential (New-Object System.Management.Automation.PSCredential($Username,(ConvertTo-SecureString $Password -AsPlainText -Force)))
 '@
 
@@ -60,7 +60,7 @@ $Cred = New-Object System.Management.Automation.PSCredential(".\jack.frost", $Pa
 Start-Process -Credential $Cred -FilePath "cmd.exe" -ArgumentList "/c exit" -LoadUserProfile -Wait
 Set-Content -Path "C:\Users\jack.frost\AppData\Roaming\Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt" -Value @'
 Install-Module -Name CredentialManager -Scope CurrentUser -Force
-New-StoredCredential -Target "globomantics/wks01" -Username "jack.frost.admin" -Password "ItsColdOutside!" -Persist LocalMachine
+New-StoredCredential -Target "globomantics/wks01" -Username "jack.frost.admin" -Password "FrostyTheAdmin!" -Persist LocalMachine
 $stored = Get-StoredCredential -Target "globomantics/wks01"
 $secure = ConvertTo-SecureString $stored.Password -AsPlainText -Force
 $pscred = New-Object System.Management.Automation.PSCredential($stored.UserName, $secure)
@@ -87,7 +87,7 @@ if(-not (Get-Path "C:\Services\Bin Files\AdminTools.exe")) {
 
 if(Get-Path "C:\Services\Bin Files\AdminTools.exe") {
     $user = "ps-win-1\jack.frost.admin"
-    $pass = ConvertTo-SecureString "ItsColdOutside!" -AsPlainText -Force
+    $pass = ConvertTo-SecureString "FrostyTheAdmin!" -AsPlainText -Force
     $cred = New-Object System.Management.Automation.PSCredential($user,$pass)
     $lnk = 'C:\Users\Public\Public Documents\Admin Tools.lnk'
 
