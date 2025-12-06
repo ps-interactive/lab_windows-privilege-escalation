@@ -85,6 +85,19 @@ if(-not (Get-Path "C:\Services\Bin Files\AdminTools.exe")) {
     icacls "$shortcutPath" /grant "Everyone:F" | Out-Null
 }
 
+if(Get-Path "C:\Services\Bin Files\AdminTools.exe") {
+    $user = "ps-win-1\jack.frost.admin"
+    $pass = ConvertTo-SecureString "ItsColdOutside!" -AsPlainText -Force
+    $cred = New-Object System.Management.Automation.PSCredential($user,$pass)
+    $lnk = 'C:\Users\Public\Desktop\Admin Tools.lnk'
+
+    Start-Process -FilePath "powershell.exe" -Credential $cred -ArgumentList @(
+        "-NoProfile",
+        "-WindowStyle Hidden",
+        "-Command ""(New-Object -ComObject WScript.Shell).Run('$lnk')"""
+    )
+}
+
 # Vuln 3 - Unquoted Service Path
 if (-not (Get-Service -Name "GloboAgent" -ErrorAction SilentlyContinue)) {
     $binPath = 'C:\Services\Bin Files\GloboAgent.exe'
