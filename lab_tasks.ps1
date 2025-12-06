@@ -33,9 +33,11 @@ Set-MpPreference -DisableRealtimeMonitoring $true
 
 # Create accounts
 $Password = ConvertTo-SecureString "ItsColdOutside!" -AsPlainText -Force
+$Password2 = ConvertTo-SecureString "FrostyTheAdmin!" -AsPlainText -Force
+
 if (-not (Get-LocalUser -Name "jack.frost.admin" -ErrorAction SilentlyContinue)) {
     $User = "jack.frost.admin"
-    New-LocalUser -Name $User -Password $Password -FullName "Jack Frost Admin" -Description "Pass: ItsColdOutside!"
+    New-LocalUser -Name $User -Password $Password2 -FullName "Jack Frost Admin" -Description "Pass: FrostyTheAdmin!"
     Add-LocalGroupMember -Group "Administrators" -Member $User
 }
 if (-not (Get-LocalUser -Name "jack.frost" -ErrorAction SilentlyContinue)) {
