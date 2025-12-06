@@ -67,8 +67,6 @@ $pscred = New-Object System.Management.Automation.PSCredential($stored.UserName,
 $pscred
 '@
 
-# Vuln 2 - Something else
-
 # Vuln 3 - Unquoted Service Path
 if (-not (Get-Service -Name "GloboAgent" -ErrorAction SilentlyContinue)) {
     $binPath = 'C:\Services\Bin Files\GloboAgent.exe'
