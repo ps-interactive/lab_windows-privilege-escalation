@@ -67,6 +67,24 @@ $pscred = New-Object System.Management.Automation.PSCredential($stored.UserName,
 $pscred
 '@
 
+# Vuln 2 - Insecure Logon Script
+if(-not (Get-Path "C:\Services\Bin Files\AdminTools.exe")) {
+    Copy-Item "C:\Windows\System32\cmd.exe" "C:\Services\Bin Files\AdminTools.exe"
+    $publicDesktop = "C:\Users\Public\Desktop"
+    $shortcutPath = Join-Path $publicDesktop "Admin Tools.lnk"
+
+    $ws = New-Object -ComObject WScript.Shell
+    $sc = $ws.CreateShortcut($shortcutPath)
+    $sc.TargetPath = $dst
+    $sc.WorkingDirectory = $binPath
+    $sc.WindowStyle = 1
+    $sc.Description = "Admin Tools"
+    $sc.Save()
+
+    icacls "C:\Services\Bin Files\AdminTools.exe" /inheritance:r /grant:r "Administrators:F" "SYSTEM:F" /deny "Users:W" | Out-Null
+    icacls "$shortcutPath" /grant "Everyone:F" | Out-Null
+}
+
 # Vuln 3 - Unquoted Service Path
 if (-not (Get-Service -Name "GloboAgent" -ErrorAction SilentlyContinue)) {
     $binPath = 'C:\Services\Bin Files\GloboAgent.exe'
