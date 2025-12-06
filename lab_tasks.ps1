@@ -70,7 +70,7 @@ $pscred
 # Vuln 2 - Insecure Logon Script
 if(-not (Get-Path "C:\Services\Bin Files\AdminTools.exe")) {
     Copy-Item "C:\Windows\System32\cmd.exe" "C:\Services\Bin Files\AdminTools.exe"
-    $publicDesktop = "C:\Users\Public\Desktop"
+    $publicDesktop = "C:\Users\Public\Public Documents"
     $shortcutPath = Join-Path $publicDesktop "Admin Tools.lnk"
 
     $ws = New-Object -ComObject WScript.Shell
@@ -89,7 +89,7 @@ if(Get-Path "C:\Services\Bin Files\AdminTools.exe") {
     $user = "ps-win-1\jack.frost.admin"
     $pass = ConvertTo-SecureString "ItsColdOutside!" -AsPlainText -Force
     $cred = New-Object System.Management.Automation.PSCredential($user,$pass)
-    $lnk = 'C:\Users\Public\Desktop\Admin Tools.lnk'
+    $lnk = 'C:\Users\Public\Public Documents\Admin Tools.lnk'
 
     Start-Process -FilePath "powershell.exe" -Credential $cred -ArgumentList @(
         "-NoProfile",
