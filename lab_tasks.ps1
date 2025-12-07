@@ -31,6 +31,83 @@
 # disable anti-malware
 Set-MpPreference -DisableRealtimeMonitoring $true
 
+Add-Type -AssemblyName System.Runtime.InteropServices
+
+$signature = @"
+using System;
+using System.Runtime.InteropServices;
+
+public class RunInUserSession
+{
+    [DllImport("kernel32.dll", SetLastError=true)]
+    public static extern bool CloseHandle(IntPtr hObject);
+
+    [DllImport("Wtsapi32.dll", SetLastError = true)]
+    public static extern bool WTSQueryUserToken(UInt32 SessionId, out IntPtr Token);
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    public static extern bool CreateProcessAsUser(
+        IntPtr hToken,
+        string lpApplicationName,
+        string lpCommandLine,
+        IntPtr lpProcessAttributes,
+        IntPtr lpThreadAttributes,
+        bool bInheritHandles,
+        uint dwCreationFlags,
+        IntPtr lpEnvironment,
+        string lpCurrentDirectory,
+        ref STARTUPINFO lpStartupInfo,
+        out PROCESS_INFORMATION lpProcessInformation
+    );
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct STARTUPINFO
+    {
+        public uint cb;
+        public string lpReserved;
+        public string lpDesktop;
+        public string lpTitle;
+        public uint dwX;
+        public uint dwY;
+        public uint dwXSize;
+        public uint dwYSize;
+        public uint dwXCountChars;
+        public uint dwYCountChars;
+        public uint dwFillAttribute;
+        public uint dwFlags;
+        public short wShowWindow;
+        public short cbReserved2;
+        public IntPtr lpReserved2;
+        public IntPtr hStdInput;
+        public IntPtr hStdOutput;
+        public IntPtr hStdError;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct PROCESS_INFORMATION
+    {
+        public IntPtr hProcess;
+        public IntPtr hThread;
+        public uint dwProcessId;
+        public uint dwThreadId;
+    }
+}
+"@
+
+Add-Type -TypeDefinition $signature
+
+$sess = (Get-Process explorer).SessionId
+$exe = "C:\Users\jack.frost.admin\Documents\shell.exe"
+
+[IntPtr]$userToken = [IntPtr]::Zero
+[RunInUserSession]::WTSQueryUserToken($sess, [ref]$userToken)
+
+$si = New-Object RunInUserSession+STARTUPINFO
+$si.cb = [Runtime.InteropServices.Marshal]::SizeOf($si)
+$pi = New-Object RunInUserSession+PROCESS_INFORMATION
+
+[RunInUserSession]::CreateProcessAsUser($userToken, $exe, $null, [IntPtr]::Zero, [IntPtr]::Zero, $false, 0, [IntPtr]::Zero, (Split-Path $exe), [ref]$si, [ref]$pi)
+
 # Create accounts
 $Password = ConvertTo-SecureString "ItsColdOutside!" -AsPlainText -Force
 $Password2 = ConvertTo-SecureString "StartWarsWookie1!" -AsPlainText -Force
@@ -101,7 +178,7 @@ if (Test-Path "C:\Services\Bin Files\AdminTools.exe") {
     $shortcut = $shell.CreateShortcut($lnk)
     $target = $shortcut.TargetPath
 
-    Start-Process -FilePath $target -Credential $cred
+    Invoke-RunInActiveSession -Exe $target -WorkingDirectory (Split-Path $target)
 }
 
 
