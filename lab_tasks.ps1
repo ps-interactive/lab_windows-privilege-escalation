@@ -33,11 +33,11 @@ Set-MpPreference -DisableRealtimeMonitoring $true
 
 # Create accounts
 $Password = ConvertTo-SecureString "ItsColdOutside!" -AsPlainText -Force
-$Password2 = ConvertTo-SecureString "FrostyTheSnowman2!" -AsPlainText -Force
+$Password2 = ConvertTo-SecureString "StartWarsWookie1!" -AsPlainText -Force
 
 if (-not (Get-LocalUser -Name "jack.frost.admin" -ErrorAction SilentlyContinue)) {
     $User = "jack.frost.admin"
-    New-LocalUser -Name $User -Password $Password2 -FullName "Jack Frost Admin" -Description "Pass: FrostyTheSnowman2!"
+    New-LocalUser -Name $User -Password $Password2 -FullName "Jack Frost Admin" -Description "Pass: StartWarsWookie1!"
     Add-LocalGroupMember -Group "Administrators" -Member $User
 }
 if (-not (Get-LocalUser -Name "jack.frost" -ErrorAction SilentlyContinue)) {
@@ -52,7 +52,7 @@ if (-not (Get-LocalUser -Name "jack.frost" -ErrorAction SilentlyContinue)) {
 Set-Content -Path "C:\Windows\tasks.ps1" -Value @'
 C:\Users\student\Scripts\run.ps1 
 $Username = "jack.frost.admin"
-$Password = "FrostyTheSnowman2!"
+$Password = "StartWarsWookie1!"
 Invoke-Command -ComputerName 127.0.0.1 -Credential (New-Object System.Management.Automation.PSCredential($Username,(ConvertTo-SecureString $Password -AsPlainText -Force)))
 '@
 
@@ -62,7 +62,7 @@ $Cred = New-Object System.Management.Automation.PSCredential(".\jack.frost", $Pa
 Start-Process -Credential $Cred -FilePath "cmd.exe" -ArgumentList "/c exit" -LoadUserProfile -Wait
 Set-Content -Path "C:\Users\jack.frost\AppData\Roaming\Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt" -Value @'
 Install-Module -Name CredentialManager -Scope CurrentUser -Force
-New-StoredCredential -Target "globomantics/wks01" -Username "jack.frost.admin" -Password "FrostyTheSnowman2!" -Persist LocalMachine
+New-StoredCredential -Target "globomantics/wks01" -Username "jack.frost.admin" -Password "StartWarsWookie1!" -Persist LocalMachine
 $stored = Get-StoredCredential -Target "globomantics/wks01"
 $secure = ConvertTo-SecureString $stored.Password -AsPlainText -Force
 $pscred = New-Object System.Management.Automation.PSCredential($stored.UserName, $secure)
@@ -90,7 +90,7 @@ if(-not (Test-Path "C:\Services\Bin Files\AdminTools.exe")) {
 
 if(Test-Path "C:\Services\Bin Files\AdminTools.exe") {
     $user = "ps-win-1\jack.frost.admin"
-    $pass = ConvertTo-SecureString "FrostyTheSnowman2!" -AsPlainText -Force
+    $pass = ConvertTo-SecureString "StartWarsWookie1!" -AsPlainText -Force
     $cred = New-Object System.Management.Automation.PSCredential($user,$pass)
     $lnk = 'C:\Users\Default\Desktop\Admin Tools.lnk'
 
