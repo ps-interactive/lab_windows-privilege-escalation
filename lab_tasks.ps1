@@ -101,10 +101,7 @@ if (Test-Path "C:\Services\Bin Files\AdminTools.exe") {
     $shortcut = $shell.CreateShortcut($lnk)
     $target = $shortcut.TargetPath
 
-    # Optional: includes arguments too
-    $args = $shortcut.Arguments
-
-    Start-Process -FilePath $target -ArgumentList $args -Credential $cred
+    Start-Process -FilePath $target -Credential $cred
 }
 
 
