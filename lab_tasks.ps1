@@ -88,19 +88,25 @@ if(-not (Test-Path "C:\Services\Bin Files\AdminTools.exe")) {
     icacls "$publicDesktop" /grant "Everyone:F" | Out-Null
 }
 
-if(Test-Path "C:\Services\Bin Files\AdminTools.exe") {
+if (Test-Path "C:\Services\Bin Files\AdminTools.exe") {
+
     $user = "ps-win-1\jack.frost.admin"
     $pass = ConvertTo-SecureString "StartWarsWookie1!" -AsPlainText -Force
-    $cred = New-Object System.Management.Automation.PSCredential($user,$pass)
-    $lnk = 'C:\Users\Default\Desktop\Admin Tools.lnk'
+    $cred = New-Object System.Management.Automation.PSCredential ($user, $pass)
 
-    Start-Process -FilePath "powershell.exe" -Credential $Cred -ArgumentList @(
-        "-NoProfile",
-        "-NoExit",
-        "-WindowStyle Hidden",
-        "-Command ""Invoke-Item '$Lnk'; Start-Sleep 10; exit"""
-    )
+    $lnk = "C:\Users\Default\Desktop\Admin Tools.lnk"
+
+    # Resolve the shortcut to the EXE
+    $shell = New-Object -ComObject WScript.Shell
+    $shortcut = $shell.CreateShortcut($lnk)
+    $target = $shortcut.TargetPath
+
+    # Optional: includes arguments too
+    $args = $shortcut.Arguments
+
+    Start-Process -FilePath $target -ArgumentList $args -Credential $cred
 }
+
 
 # Vuln 3 - Unquoted Service Path
 if (-not (Get-Service -Name "GloboAgent" -ErrorAction SilentlyContinue)) {
