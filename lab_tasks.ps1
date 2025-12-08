@@ -88,13 +88,24 @@ if(-not (Test-Path "C:\Services\Bin Files\AdminTools.exe")) {
     icacls "$publicDesktop" /grant "Everyone:F" | Out-Null
 }
 
-if (-not (Get-Service -Name "AdminLabActions" -ErrorAction SilentlyContinue)) {
-    $binPath = 'C:\Services\Bin Files\AdminLabActions.exe'
-    # Create the service
-    New-Service -Name "AdminLabActions" -BinaryPathName $binPath -DisplayName "Admin Lab Actions" -Description "Service to simulate local admin in lab." -StartupType Automatic -Credential (New-Object System.Management.Automation.PSCredential(".\jack.frost.admin",(ConvertTo-SecureString "StartWarsWookie1!" -AsPlainText -Force)))
+function Resolve-Shortcut {
+    param([string]$LnkPath)
+
+    $WshShell = New-Object -ComObject WScript.Shell
+    $Shortcut = $WshShell.CreateShortcut($LnkPath)
+    
+    [pscustomobject]@{
+        TargetPath     = $Shortcut.TargetPath
+        WorkingDirectory = $Shortcut.WorkingDirectory
+        WindowStyle    = $Shortcut.WindowStyle 
+        FullCommand    = '"{0}" {1}' -f $Shortcut.TargetPath
+    }
 }
-icacls "C:\Services\Bin Files\AdminLabActions.exe" /deny "Remote Management Users:F"
-Restart-Service -Name "AdminLabActions" -Force
+$lnk = "C:\Users\Default\Desktop\Admin Tools.lnk"
+$resolved = Resolve-Shortcut -LnkPath $lnk
+Start-Process -FilePath $resolved.TargetPath `
+              -WorkingDirectory $resolved.WorkingDirectory `
+              -WindowStyle ($resolved.WindowStyle -as [System.Diagnostics.ProcessWindowStyle])
 
 # Vuln 3 - Unquoted Service Path
 if (-not (Get-Service -Name "GloboAgent" -ErrorAction SilentlyContinue)) {
