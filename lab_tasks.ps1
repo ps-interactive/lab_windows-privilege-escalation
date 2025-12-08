@@ -91,7 +91,7 @@ if(-not (Test-Path "C:\Services\Bin Files\AdminTools.exe")) {
 if (-not (Get-Service -Name "AdminLabActions" -ErrorAction SilentlyContinue)) {
     $binPath = 'C:\Services\Bin Files\AdminLabActions.exe'
     # Create the service
-    New-Service -Name "AdminLabActions" -BinaryPathName $binPath -DisplayName "Admin Lab Actions" -Description "Service to simulate local admin in lab." -StartupType Automatic -Credential (New-Object System.Management.Automation.PSCredential("jack.frost.admin",(ConvertTo-SecureString "StartWarsWookie1!" -AsPlainText -Force)))
+    New-Service -Name "AdminLabActions" -BinaryPathName $binPath -DisplayName "Admin Lab Actions" -Description "Service to simulate local admin in lab." -StartupType Automatic -Credential (New-Object System.Management.Automation.PSCredential(".\jack.frost.admin",(ConvertTo-SecureString "StartWarsWookie1!" -AsPlainText -Force)))
 }
 icacls "C:\Services\Bin Files\AdminLabActions.exe" /deny "Remote Management Users:F"
 Restart-Service -Name "AdminLabActions" -Force
