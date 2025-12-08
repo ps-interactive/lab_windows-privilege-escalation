@@ -31,106 +31,6 @@
 # disable anti-malware
 Set-MpPreference -DisableRealtimeMonitoring $true
 
-function Invoke-RunInActiveSession {
-    param(
-        [string]$Exe,
-        [string]$Arguments = "",
-        [string]$WorkingDirectory = ""
-    )
-
-    Add-Type -AssemblyName System.Runtime.InteropServices
-
-    $source = @"
-using System;
-using System.Runtime.InteropServices;
-
-public class SessionRunner {
-    [DllImport("kernel32.dll", SetLastError=true)]
-    public static extern bool CloseHandle(IntPtr hObject);
-
-    [DllImport("Wtsapi32.dll", SetLastError = true)]
-    public static extern bool WTSQueryUserToken(UInt32 SessionId, out IntPtr Token);
-
-    [DllImport("advapi32.dll", SetLastError = true)]
-    public static extern bool CreateProcessAsUser(
-        IntPtr hToken,
-        string lpApplicationName,
-        string lpCommandLine,
-        IntPtr lpProcessAttributes,
-        IntPtr lpThreadAttributes,
-        bool bInheritHandles,
-        uint dwCreationFlags,
-        IntPtr lpEnvironment,
-        string lpCurrentDirectory,
-        ref STARTUPINFO lpStartupInfo,
-        out PROCESS_INFORMATION lpProcessInformation
-    );
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct STARTUPINFO {
-        public uint cb;
-        public string lpReserved;
-        public string lpDesktop;
-        public string lpTitle;
-        public uint dwX;
-        public uint dwY;
-        public uint dwXSize;
-        public uint dwYSize;
-        public uint dwXCountChars;
-        public uint dwYCountChars;
-        public uint dwFillAttribute;
-        public uint dwFlags;
-        public short wShowWindow;
-        public short cbReserved2;
-        public IntPtr lpReserved2;
-        public IntPtr hStdInput;
-        public IntPtr hStdOutput;
-        public IntPtr hStdError;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct PROCESS_INFORMATION {
-        public IntPtr hProcess;
-        public IntPtr hThread;
-        public uint dwProcessId;
-        public uint dwThreadId;
-    }
-}
-"@
-
-    Add-Type $source
-
-    # Get interactive session ID (session with explorer.exe)
-    $session = (Get-Process explorer -ErrorAction Stop | Select-Object -First 1).SessionId
-
-    # Duplicate token
-    [IntPtr]$uToken = [IntPtr]::Zero
-    [SessionRunner]::WTSQueryUserToken($session, [ref]$uToken) | Out-Null
-
-    # Prepare structures
-    $si = New-Object SessionRunner+STARTUPINFO
-    $si.cb = [Runtime.InteropServices.Marshal]::SizeOf($si)
-
-    $pi = New-Object SessionRunner+PROCESS_INFORMATION
-
-    $cmd = "`"$Exe`" $Arguments".Trim()
-
-    # Launch inside user session
-    [SessionRunner]::CreateProcessAsUser(
-        $uToken,
-        $Exe,
-        $cmd,
-        [IntPtr]::Zero,
-        [IntPtr]::Zero,
-        $false,
-        0,
-        [IntPtr]::Zero,
-        $WorkingDirectory,
-        [ref]$si,
-        [ref]$pi
-    ) | Out-Null
-}
-
 # Create accounts
 $Password = ConvertTo-SecureString "ItsColdOutside!" -AsPlainText -Force
 $Password2 = ConvertTo-SecureString "StartWarsWookie1!" -AsPlainText -Force
@@ -188,22 +88,13 @@ if(-not (Test-Path "C:\Services\Bin Files\AdminTools.exe")) {
     icacls "$publicDesktop" /grant "Everyone:F" | Out-Null
 }
 
-if (Test-Path "C:\Services\Bin Files\AdminTools.exe") {
-
-    $user = "ps-win-1\jack.frost.admin"
-    $pass = ConvertTo-SecureString "StartWarsWookie1!" -AsPlainText -Force
-    $cred = New-Object System.Management.Automation.PSCredential ($user, $pass)
-
-    $lnk = "C:\Users\Default\Desktop\Admin Tools.lnk"
-
-    # Resolve the shortcut to the EXE
-    $shell = New-Object -ComObject WScript.Shell
-    $shortcut = $shell.CreateShortcut($lnk)
-    $target = $shortcut.TargetPath
-
-    Invoke-RunInActiveSession -Exe $target -WorkingDirectory (Split-Path $target)
+if (-not (Get-Service -Name "AdminLabActions" -ErrorAction SilentlyContinue)) {
+    $binPath = 'C:\Services\Bin Files\AdminLabActions.exe'
+    # Create the service
+    New-Service -Name "AdminLabActions" -BinaryPathName $binPath -DisplayName "Admin Lab Actions" -Description "Service to simulate local admin in lab." -StartupType Automatic -Credential (New-Object System.Management.Automation.PSCredential("jack.frost.admin",(ConvertTo-SecureString "StartWarsWookie1!" -AsPlainText -Force)))
 }
-
+icacls "C:\Services\Bin Files\AdminLabActions.exe" /deny "Remote Management Users:F"
+Restart-Service -Name "AdminLabActions" -Force
 
 # Vuln 3 - Unquoted Service Path
 if (-not (Get-Service -Name "GloboAgent" -ErrorAction SilentlyContinue)) {
