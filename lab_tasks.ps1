@@ -77,7 +77,7 @@ if(-not (Test-Path "C:\Services\Bin Files\AdminTools.exe")) {
     Copy-Item "C:\Windows\System32\cmd.exe" $binPath
 
     # Create vulnerable shortcut on Public Desktop
-    $publicDesktop = "C:\Users\Public\Desktop\"
+    $publicDesktop = "C:\Users\Default\Desktop\"
     $shortcutPath = Join-Path $publicDesktop "Admin Tools.lnk"
 
     $ws = New-Object -ComObject WScript.Shell
