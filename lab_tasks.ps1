@@ -236,7 +236,7 @@ Set-ItemProperty "HKLM:\SOFTWARE\Classes\CLSID\$clsid" -Name "(Default)" -Value 
 Set-ItemProperty "HKLM:\SOFTWARE\Classes\CLSID\$clsid" -Name "AppID" -Value $appid
 
 New-Item -Path "HKLM:\SOFTWARE\Classes\CLSID\$clsid\LocalServer32" -Force | Out-Null
-Set-ItemProperty "HKLM:\SOFTWARE\Classes\CLSID\$clsid\LocalServer32" -Name "(Default)" -Value "C:\Windows\System32\cmd.exe"
+Set-ItemProperty "HKLM:\SOFTWARE\Classes\CLSID\$clsid\LocalServer32" -Name "(Default)" -Value "C:\Services\Bin Files\GloboCOM2.exe"
 
 New-Item -Path "HKLM:\SOFTWARE\Classes\AppID\$appid" -Force | Out-Null
 Set-ItemProperty "HKLM:\SOFTWARE\Classes\AppID\$appid" -Name "(Default)" -Value "Lab Vulnerable COM Object"
