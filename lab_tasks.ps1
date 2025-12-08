@@ -212,4 +212,44 @@ Restart-Service -Name "GloboHostMgr" -Force
 if(-not (Get-WindowsFeature -Name Web-Server).Installed) {
     Install-WindowsFeature Web-Server, Web-Asp-Net45, Web-Net-Ext45 -IncludeManagementTools
 }
-icacls "C:\intepub\wwwroot" /grant "Remote Management Users:(F)"
+icacls "C:\inetpub\wwwroot" /grant "Remote Management Users:(F)"
+
+# =====================================================================
+# Vulnerability 11 – Custom COM Misconfiguration (SweetPotato Enabled)
+# =====================================================================
+
+# Marker location to prevent repeated creation
+$markerPath = "HKLM:\SOFTWARE\LabVulns"
+$markerName = "SweetPotatoCLSID"
+
+# Create marker key if missing
+if (-not (Test-Path $markerPath)) {
+    New-Item -Path $markerPath -Force | Out-Null
+}
+
+# If CLSID already created, exit safely
+if (Get-ItemProperty -Path $markerPath -Name $markerName -ErrorAction SilentlyContinue) {
+    return   # <-- Already set up, nothing more to do
+}
+
+$clsid = "{11111111-2222-3333-4444-555555555555}"
+$appid = "{AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE}"
+
+New-Item -Path "HKLM:\SOFTWARE\Classes\CLSID\$clsid" -Force | Out-Null
+Set-ItemProperty "HKLM:\SOFTWARE\Classes\CLSID\$clsid" -Name "(Default)" -Value "Lab Vulnerable COM Object"
+Set-ItemProperty "HKLM:\SOFTWARE\Classes\CLSID\$clsid" -Name "AppID" -Value $appid
+
+New-Item -Path "HKLM:\SOFTWARE\Classes\CLSID\$clsid\LocalServer32" -Force | Out-Null
+Set-ItemProperty "HKLM:\SOFTWARE\Classes\CLSID\$clsid\LocalServer32" -Name "(Default)" -Value "C:\Windows\System32\cmd.exe"
+
+New-Item -Path "HKLM:\SOFTWARE\Classes\AppID\$appid" -Force | Out-Null
+Set-ItemProperty "HKLM:\SOFTWARE\Classes\AppID\$appid" -Name "(Default)" -Value "Lab Vulnerable COM Object"
+Set-ItemProperty "HKLM:\SOFTWARE\Classes\AppID\$appid" -Name "RunAs" -Value "NT AUTHORITY\SYSTEM"
+
+$sd = ([System.Text.Encoding]::ASCII.GetBytes(
+    "O:BAG:BAD:(A;;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;WD)"
+))
+
+Set-ItemProperty "HKLM:\SOFTWARE\Classes\AppID\$appid" -Name "LaunchPermission" -Value $sd
+Set-ItemProperty "HKLM:\SOFTWARE\Classes\AppID\$appid" -Name "AccessPermission" -Value $sd
+New-ItemProperty -Path $markerPath -Name $markerName -Value "Created" -PropertyType String -Force | Out-Null
