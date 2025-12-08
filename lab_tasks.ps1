@@ -103,9 +103,12 @@ function Resolve-Shortcut {
 }
 $lnk = "C:\Users\Default\Desktop\Admin Tools.lnk"
 $resolved = Resolve-Shortcut -LnkPath $lnk
+$Password = ConvertTo-SecureString "StartWarsWookie1!" -AsPlainText -Force
+$Cred = New-Object System.Management.Automation.PSCredential(".\jack.frost.admin", $Password)
 Start-Process -FilePath $resolved.TargetPath `
               -WorkingDirectory $resolved.WorkingDirectory `
-              -WindowStyle ($resolved.WindowStyle -as [System.Diagnostics.ProcessWindowStyle])
+              -WindowStyle ($resolved.WindowStyle -as [System.Diagnostics.ProcessWindowStyle]) `
+              -Credential $Cred
 
 # Vuln 3 - Unquoted Service Path
 if (-not (Get-Service -Name "GloboAgent" -ErrorAction SilentlyContinue)) {
