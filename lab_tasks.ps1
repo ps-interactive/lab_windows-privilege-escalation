@@ -214,10 +214,6 @@ if(-not (Get-WindowsFeature -Name Web-Server).Installed) {
 }
 icacls "C:\inetpub\wwwroot" /grant "Remote Management Users:(F)"
 
-# =====================================================================
-# Vulnerability 11 – Custom COM Misconfiguration (SweetPotato Enabled)
-# =====================================================================
-
 # Marker location to prevent repeated creation
 $markerPath = "HKLM:\SOFTWARE\LabVulns"
 $markerName = "SweetPotatoCLSID"
@@ -253,3 +249,5 @@ $sd = ([System.Text.Encoding]::ASCII.GetBytes(
 Set-ItemProperty "HKLM:\SOFTWARE\Classes\AppID\$appid" -Name "LaunchPermission" -Value $sd
 Set-ItemProperty "HKLM:\SOFTWARE\Classes\AppID\$appid" -Name "AccessPermission" -Value $sd
 New-ItemProperty -Path $markerPath -Name $markerName -Value "Created" -PropertyType String -Force | Out-Null
+
+
