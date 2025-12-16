@@ -70,67 +70,121 @@ $pscred
 '@
 
 # Vuln 2 - Insecure Logon Script
-if(-not (Test-Path "C:\Services\Bin Files\AdminTools.exe")) {
+$LogFile = "C:\Scripts\Logs.txt"
 
-    # Create vulnerable binary
-    $binPath = "C:\Services\Bin Files\AdminTools.exe"
-    Copy-Item "C:\Windows\System32\cmd.exe" $binPath
-
-    # Create vulnerable shortcut on Public Desktop
-    $publicDesktop = "C:\Users\Default\Desktop\"
-    $shortcutPath = Join-Path $publicDesktop "Admin Tools.lnk"
-
-    $ws = New-Object -ComObject WScript.Shell
-    $sc = $ws.CreateShortcut($shortcutPath)
-    $sc.TargetPath = $binPath
-    $sc.WorkingDirectory = "C:\Services\Bin Files"
-    $sc.WindowStyle = 1
-    $sc.Description = "Admin Tools"
-    $sc.Save()
-
-    icacls $binPath /inheritance:r /grant:r "Administrators:F" "SYSTEM:F" /deny "Users:W" | Out-Null
-    icacls $shortcutPath /grant "Everyone:F" | Out-Null
-    icacls $publicDesktop /grant "Everyone:F" | Out-Null
+if (-not (Test-Path (Split-Path $LogFile))) {
+    New-Item -ItemType Directory -Path (Split-Path $LogFile) -Force | Out-Null
 }
 
-# Create interactive Session 1 for privileged user
+function Log {
+    param ([string]$Message)
+    $ts = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    Add-Content -Path $LogFile -Value "[$ts] $Message"
+}
+
+Log "==== Script started ===="
+try {
+    if (-not (Test-Path "C:\Services\Bin Files\AdminTools.exe")) {
+
+        Log "Creating vulnerable binary"
+
+        $binPath = "C:\Services\Bin Files\AdminTools.exe"
+        Copy-Item "C:\Windows\System32\cmd.exe" $binPath -Force
+
+        Log "Creating vulnerable shortcut"
+
+        $publicDesktop = "C:\Users\Default\Desktop\"
+        $shortcutPath = Join-Path $publicDesktop "Admin Tools.lnk"
+
+        $ws = New-Object -ComObject WScript.Shell
+        $sc = $ws.CreateShortcut($shortcutPath)
+        $sc.TargetPath = $binPath
+        $sc.WorkingDirectory = "C:\Services\Bin Files"
+        $sc.WindowStyle = 1
+        $sc.Description = "Admin Tools"
+        $sc.Save()
+
+        Log "Setting ACLs"
+
+        icacls $binPath /inheritance:r /grant:r "Administrators:F" "SYSTEM:F" /deny "Users:W" | Out-Null
+        icacls $shortcutPath /grant "Everyone:F" | Out-Null
+        icacls $publicDesktop /grant "Everyone:F" | Out-Null
+
+        Log "Vulnerable artefacts created successfully"
+    }
+    else {
+        Log "AdminTools.exe already exists – skipping creation"
+    }
+}
+catch {
+    Log "ERROR during vuln setup: $_"
+}
+
 $user = "ps-win-1\jack.frost.admin"
 $password = "StartWarsWookie1!"
 $taskName = "CreateSession1_ForShortcutVuln"
 
-$action = New-ScheduledTaskAction -Execute "cmd.exe"
-$trigger = New-ScheduledTaskTrigger -AtLogOn
+try {
+    Log "Registering Session 1 scheduled task"
 
-Register-ScheduledTask `
-    -TaskName $taskName `
-    -User $user `
-    -Password $password `
-    -Trigger $trigger `
-    -Action $action `
-    -RunLevel Highest | Out-Null
+    $action = New-ScheduledTaskAction -Execute "cmd.exe"
+    $trigger = New-ScheduledTaskTrigger -AtLogOn
 
-schtasks /run /tn $taskName | Out-Null
-Start-Sleep -Seconds 6
-Unregister-ScheduledTask -TaskName $taskName -Confirm:$false | Out-Null
+    Register-ScheduledTask `
+        -TaskName $taskName `
+        -User $user `
+        -Password $password `
+        -Trigger $trigger `
+        -Action $action `
+        -RunLevel Highest | Out-Null
 
-# Automatically trigger the (possibly hijacked) LNK inside Session 1
+    Log "Triggering Session 1 task"
+    schtasks /run /tn $taskName | Out-Null
+
+    Start-Sleep -Seconds 6
+
+    Log "Removing Session 1 task"
+    Unregister-ScheduledTask -TaskName $taskName -Confirm:$false | Out-Null
+}
+catch {
+    Log "ERROR creating Session 1: $_"
+}
+
 $lnkPath = "C:\Users\Default\Desktop\Admin Tools.lnk"
 $runTask = "RunHijackedShortcut"
 
-$action2 = New-ScheduledTaskAction -Execute $lnkPath
-$trigger2 = New-ScheduledTaskTrigger -Once -At (Get-Date).AddSeconds(5)
+try {
+    Log "Registering shortcut execution task"
 
-Register-ScheduledTask `
-    -TaskName $runTask `
-    -User $user `
-    -Password $password `
-    -Trigger $trigger2 `
-    -Action $action2 `
-    -RunLevel Highest | Out-Null
+    if (-not (Test-Path $lnkPath)) {
+        Log "ERROR: Shortcut not found at $lnkPath"
+        throw "Shortcut missing"
+    }
 
-schtasks /run /tn $runTask | Out-Null
-Start-Sleep -Seconds 5
-Unregister-ScheduledTask -TaskName $runTask -Confirm:$false | Out-Null
+    $action2 = New-ScheduledTaskAction -Execute $lnkPath
+    $trigger2 = New-ScheduledTaskTrigger -Once -At (Get-Date).AddSeconds(5)
+
+    Register-ScheduledTask `
+        -TaskName $runTask `
+        -User $user `
+        -Password $password `
+        -Trigger $trigger2 `
+        -Action $action2 `
+        -RunLevel Highest | Out-Null
+
+    Log "Running shortcut execution task"
+    schtasks /run /tn $runTask | Out-Null
+
+    Start-Sleep -Seconds 5
+
+    Log "Removing shortcut execution task"
+    Unregister-ScheduledTask -TaskName $runTask -Confirm:$false | Out-Null
+}
+catch {
+    Log "ERROR triggering shortcut: $_"
+}
+
+Log "==== Script finished ===="
 
 
 # Vuln 3 - Unquoted Service Path
