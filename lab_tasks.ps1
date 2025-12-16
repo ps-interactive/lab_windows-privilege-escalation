@@ -163,28 +163,28 @@ Restart-Service -Name "GloboCore" -Force
 # Vuln 5 - Insecure File/Folder Permissions (change bat file)
 if(-not(Test-Path("C:\Scripts"))) {
     New-Item -Path "C:\Scripts" -ItemType Directory
-}
-$bat_script = @'
-@echo off
-setlocal EnableDelayedExpansion
+    $bat_script = @'
+    @echo off
+    setlocal EnableDelayedExpansion
 
-echo Initialising GloboNet Services...
-ping -n 2 127.0.0.1 >nul
-
-echo Verifying node integrity...
-for %%G in (CoreSys AuthSvc NetStack ConfigSync) do (
-    echo   [OK] %%G module loaded.
+    echo Initialising GloboNet Services...
     ping -n 2 127.0.0.1 >nul
-)
 
-echo Applying baseline policies...
-ping -n 3 127.0.0.1 >nul
-echo Done.
+    echo Verifying node integrity...
+    for %%G in (CoreSys AuthSvc NetStack ConfigSync) do (
+        echo   [OK] %%G module loaded.
+        ping -n 2 127.0.0.1 >nul
+    )
 
-endlocal
+    echo Applying baseline policies...
+    ping -n 3 127.0.0.1 >nul
+    echo Done.
+
+    endlocal
 '@
 
-Set-Content -Path "C:\Scripts\GloboScript.bat" -Value $bat_script
+    Set-Content -Path "C:\Scripts\GloboScript.bat" -Value $bat_script
+}
 
 # create a vulnerable task to run every minute
 if (-not (Get-ScheduledTask -TaskName "GloboST" -ErrorAction SilentlyContinue)) {
