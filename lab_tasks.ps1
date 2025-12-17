@@ -69,68 +69,62 @@ $pscred = New-Object System.Management.Automation.PSCredential($stored.UserName,
 $pscred
 '@
 
-# Vuln 2 - Insecure Logon Script
-if(-not (Test-Path "C:\Services\Bin Files\AdminTools.exe")) {
+# Vuln 2 – Insecure Desktop shortcut
+$binPath        = "C:\Services\Bin Files\AdminTools.exe"
+$publicDesktop  = "C:\Users\Default\Desktop"
+$lnkPath        = Join-Path $publicDesktop "Admin Tools.lnk"
 
-    # Create vulnerable binary
-    $binPath = "C:\Services\Bin Files\AdminTools.exe"
-    Copy-Item "C:\Windows\System32\cmd.exe" $binPath
+$user     = "ps-win-1\jack.frost.admin"
+$password = "StartWarsWookie1!"
+$taskName = "RunAdminTools_FromShortcut"
 
-    # Create vulnerable shortcut on Public Desktop
-    $publicDesktop = "C:\Users\Default\Desktop\"
-    $shortcutPath = Join-Path $publicDesktop "Admin Tools.lnk"
+
+# Create vulnerable binary + shortcut
+if (-not (Test-Path $binPath)) {
+
+    Copy-Item "C:\Windows\System32\cmd.exe" $binPath -Force
 
     $ws = New-Object -ComObject WScript.Shell
-    $sc = $ws.CreateShortcut($shortcutPath)
-    $sc.TargetPath = $binPath
+    $sc = $ws.CreateShortcut($lnkPath)
+    $sc.TargetPath       = $binPath
     $sc.WorkingDirectory = "C:\Services\Bin Files"
-    $sc.WindowStyle = 1
-    $sc.Description = "Admin Tools"
+    $sc.WindowStyle      = 1
+    $sc.Description      = "Admin Tools"
     $sc.Save()
 
-    icacls $binPath /inheritance:r /grant:r "Administrators:F" "SYSTEM:F" /deny "Users:W" | Out-Null
-    icacls $shortcutPath /grant "Everyone:F" | Out-Null
+    icacls $binPath /inheritance:r `
+        /grant:r "Administrators:F" "SYSTEM:F" `
+        /deny "Users:W" | Out-Null
+
+    icacls $lnkPath /grant "Everyone:F" | Out-Null
     icacls $publicDesktop /grant "Everyone:F" | Out-Null
 }
 
-# Create interactive Session 1 for privileged user
-$user = "ps-win-1\jack.frost.admin"
-$password = "StartWarsWookie1!"
-$taskName = "CreateSession1_ForShortcutVuln"
+# Resolve shortcut target (headless)
+$ws = New-Object -ComObject WScript.Shell
+$sc = $ws.CreateShortcut($lnkPath)
 
-$action = New-ScheduledTaskAction -Execute "cmd.exe"
-$trigger = New-ScheduledTaskTrigger -AtLogOn
+$targetPath = $sc.TargetPath
+$arguments  = $sc.Arguments
 
-Register-ScheduledTask `
-    -TaskName $taskName `
-    -User $user `
-    -Password $password `
-    -Trigger $trigger `
-    -Action $action `
-    -RunLevel Highest | Out-Null
+# Execute resolved target as admin
+$taskCmd = "`"$targetPath`" $arguments"
+
+schtasks /create `
+    /tn $taskName `
+    /tr $taskCmd `
+    /sc once `
+    /st 00:00 `
+    /ru $user `
+    /rp $password `
+    /rl highest `
+    /f | Out-Null
 
 schtasks /run /tn $taskName | Out-Null
-Start-Sleep -Seconds 6
-Unregister-ScheduledTask -TaskName $taskName -Confirm:$false | Out-Null
 
-# Automatically trigger the (possibly hijacked) LNK inside Session 1
-$lnkPath = "C:\Users\Default\Desktop\Admin Tools.lnk"
-$runTask = "RunHijackedShortcut"
-
-$action2 = New-ScheduledTaskAction -Execute $lnkPath
-$trigger2 = New-ScheduledTaskTrigger -Once -At (Get-Date).AddSeconds(5)
-
-Register-ScheduledTask `
-    -TaskName $runTask `
-    -User $user `
-    -Password $password `
-    -Trigger $trigger2 `
-    -Action $action2 `
-    -RunLevel Highest | Out-Null
-
-schtasks /run /tn $runTask | Out-Null
 Start-Sleep -Seconds 5
-Unregister-ScheduledTask -TaskName $runTask -Confirm:$false | Out-Null
+
+schtasks /delete /tn $taskName /f | Out-Null
 
 
 # Vuln 3 - Unquoted Service Path
