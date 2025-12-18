@@ -42,32 +42,18 @@ function Invoke-Vuln {
         Write-DebugLog "[+] $Name configured successfully"
     }
     catch {
-        Write-DebugLog "[!] $Name failed to configure" "ERROR"
-        Write-DebugLog $_.Exception.Message "ERROR"
+        Write-DebugLog "[!] $Name failed to configure"
+        Write-DebugLog $_.Exception.Message
 
-        # Service state
-        try {
-            $svc = Get-Service -Name $Name -ErrorAction Stop
-            Write-DebugLog "Service state: $($svc.Status)" "ERROR"
-        } catch {}
-
-        # ImagePath
-        try {
-            $img = Get-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Services\$Name" -Name ImagePath
-            Write-DebugLog "ImagePath: $($img.ImagePath)" "ERROR"
-        } catch {}
-
-        # SCM events
+        # Pull recent SCM errors (last 60 seconds)
         $scmEvents = Get-WinEvent -FilterHashtable @{
             LogName      = 'System'
             ProviderName = 'Service Control Manager'
             StartTime    = (Get-Date).AddSeconds(-60)
         } -ErrorAction SilentlyContinue
-
+    
         foreach ($evt in $scmEvents) {
-            if ($evt.Message -like "*$Name*") {
-                Write-DebugLog "SCM Event $($evt.Id): $($evt.Message)" "ERROR"
-            }
+            Write-DebugLog "SCM Event $($evt.Id): $($evt.Message)" "ERROR"
         }
     }
 }
