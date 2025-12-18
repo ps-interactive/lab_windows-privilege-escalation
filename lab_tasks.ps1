@@ -134,7 +134,10 @@ if (-not (Get-Service -Name "GloboAgent" -ErrorAction SilentlyContinue)) {
     New-Service -Name "GloboAgent" -BinaryPathName $binPath -DisplayName "Globomantics Agent" -Description "Building the ideal society." -StartupType Automatic
 }
 icacls "C:\Services\Bin Files\GloboAgent.exe" /deny "Remote Management Users:F"
-Restart-Service -Name "GloboAgent" -Force
+sc.exe stop GloboAgent
+timeout /t 3 > nul
+sc.exe start GloboAgent
+
 
 # Vuln 4 - Service Binary/Registry Writeable
 if (-not (Get-Service -Name "GloboCore" -ErrorAction SilentlyContinue)) {
@@ -152,7 +155,10 @@ $rule = New-Object System.Security.AccessControl.RegistryAccessRule(
 )
 $acl.SetAccessRule($rule)
 Set-Acl -Path "HKLM:\SYSTEM\CurrentControlSet\Services\GloboCore" -AclObject $acl
-Restart-Service -Name "GloboCore" -Force
+sc.exe stop GloboCore
+timeout /t 3 > nul
+sc.exe start GloboCore
+
     
 # Vuln 5 - Insecure File/Folder Permissions (change bat file)
 if(-not(Test-Path("C:\Scripts"))) {
@@ -200,7 +206,10 @@ if (-not (Get-Service -Name "GloboHostMgr" -ErrorAction SilentlyContinue)) {
     New-Service -Name "GloboHostMgr" -BinaryPathName $binPath -DisplayName "Globomantics Host Manager" -Description "Building the ideal society." -StartupType Automatic
 }
 icacls "C:\Services\Bin Files\GloboHostMgr.exe" /deny "Remote Management Users:F"
-Restart-Service -Name "GloboHostMgr" -Force
+sc.exe stop GloboHostMgr
+timeout /t 3 > nul
+sc.exe start GloboHostMgr
+
 
 # Vuln 10 - Token Impersonation
 if(-not (Get-WindowsFeature -Name Web-Server).Installed) {
