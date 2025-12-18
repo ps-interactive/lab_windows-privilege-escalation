@@ -209,24 +209,24 @@ echo Running Globo maintenance tasks...
 Invoke-Vuln "Vuln 6 - Insecure Scheduled Task" {
 
     if (-not (Get-ScheduledTask -TaskName "GloboST" -ErrorAction SilentlyContinue)) {
-
-    $action = New-ScheduledTaskAction `
-        -Execute "cmd.exe" `
-        -Argument '/c C:\Scripts\GloboScript.bat' `
-        -WorkingDirectory "C:\Scripts"
-
-    $trigger = New-ScheduledTaskTrigger `
-        -Once `
-        -At (Get-Date) `
-        -RepetitionInterval (New-TimeSpan -Minutes 1) `
-        -RepetitionDuration ([TimeSpan]::MaxValue)
-
-    Register-ScheduledTask `
-        -TaskName "GloboST" `
-        -Action $action `
-        -Trigger $trigger `
-        -RunLevel Highest `
-        -User "SYSTEM"
+    
+        $action = New-ScheduledTaskAction `
+            -Execute "cmd.exe" `
+            -Argument '/c C:\Scripts\GloboScript.bat' `
+            -WorkingDirectory "C:\Scripts"
+    
+        $trigger = New-ScheduledTaskTrigger `
+            -Once `
+            -At (Get-Date) `
+            -RepetitionInterval (New-TimeSpan -Minutes 1) `
+            -RepetitionDuration (New-TimeSpan -Days 999)
+    
+        Register-ScheduledTask `
+            -TaskName "GloboST" `
+            -Action $action `
+            -Trigger $trigger `
+            -RunLevel Highest `
+            -User "SYSTEM"
     }
 
     Start-ScheduledTask -TaskName "GloboST"
