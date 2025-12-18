@@ -1,218 +1,232 @@
+# ============================================================
 # WARNING!
 # NOTE for learners:
 #
-# This script is used to simulate user activities and vulnerabilities.
-#
-# If you read this file it will reveal vulnerabilities and credentials
-# You are only cheating yourself! :-)
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
+# This script simulates user activity and vulnerabilities.
+# Reading it reveals credentials and weaknesses.
+# You are only cheating yourself :-)
+# ============================================================
 
-# disable anti-malware
-Set-MpPreference -DisableRealtimeMonitoring $true
+$debugPath = "C:\Windows\log.txt"
 
-# Create accounts
-$Password = ConvertTo-SecureString "ItsColdOutside!" -AsPlainText -Force
-$Password2 = ConvertTo-SecureString "StartWarsWookie1!" -AsPlainText -Force
-
-if (-not (Get-LocalUser -Name "jack.frost.admin" -ErrorAction SilentlyContinue)) {
-    $User = "jack.frost.admin"
-    New-LocalUser -Name $User -Password $Password2 -FullName "Jack Frost Admin" -Description "Pass: StartWarsWookie1!"
-    Add-LocalGroupMember -Group "Administrators" -Member $User
-}
-if (-not (Get-LocalUser -Name "jack.frost" -ErrorAction SilentlyContinue)) {
-    $User = "jack.frost"
-    New-LocalUser -Name $User -Password $Password -FullName "Jack Frost" -Description "Jacks account."
-    Add-LocalGroupMember -Group "Remote Desktop Users" -Member $User
-    Add-LocalGroupMember -Group "Remote Management Users" -Member $User
+if (-not (Test-Path $debugPath)) {
+    New-Item -Path $debugPath -ItemType File -Force | Out-Null
 }
 
-# Vuln 1 - Credentials in files
-# drop password in script
-Set-Content -Path "C:\Windows\tasks.ps1" -Value @'
-C:\Users\student\Scripts\run.ps1 
-$Username = "jack.frost.admin"
-$Password = "StartWarsWookie1!"
-Invoke-Command -ComputerName 127.0.0.1 -Credential (New-Object System.Management.Automation.PSCredential($Username,(ConvertTo-SecureString $Password -AsPlainText -Force)))
-'@
-
-New-Item -Path "C:\Users\jack.frost\AppData\Roaming\Microsoft\Windows\PowerShell\PSReadLine\" -ItemType Directory -Force 
-
-$Cred = New-Object System.Management.Automation.PSCredential(".\jack.frost", $Password)
-Start-Process -Credential $Cred -FilePath "cmd.exe" -ArgumentList "/c exit" -LoadUserProfile -Wait
-Set-Content -Path "C:\Users\jack.frost\AppData\Roaming\Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt" -Value @'
-Install-Module -Name CredentialManager -Scope CurrentUser -Force
-New-StoredCredential -Target "globomantics/wks01" -Username "jack.frost.admin" -Password "StartWarsWookie1!" -Persist LocalMachine
-$stored = Get-StoredCredential -Target "globomantics/wks01"
-$secure = ConvertTo-SecureString $stored.Password -AsPlainText -Force
-$pscred = New-Object System.Management.Automation.PSCredential($stored.UserName, $secure)
-$pscred
-'@
-
-# Vuln 2 – Insecure Desktop shortcut
-$binPath        = "C:\Services\Bin Files\AdminTools.exe"
-$publicDesktop  = "C:\Users\Default\Desktop"
-$lnkPath        = Join-Path $publicDesktop "Admin Tools.lnk"
-
-$user     = "ps-win-1\jack.frost.admin"
-$password = "StartWarsWookie1!"
-$taskName = "RunAdminTools_FromShortcut"
-
-
-# Create vulnerable binary + shortcut
-if (-not (Test-Path $binPath)) {
-
-    Copy-Item "C:\Windows\System32\cmd.exe" $binPath -Force
-
-    $ws = New-Object -ComObject WScript.Shell
-    $sc = $ws.CreateShortcut($lnkPath)
-    $sc.TargetPath       = $binPath
-    $sc.WorkingDirectory = "C:\Services\Bin Files"
-    $sc.WindowStyle      = 1
-    $sc.Description      = "Admin Tools"
-    $sc.Save()
-
-    icacls $binPath /inheritance:r `
-        /grant:r "Administrators:F" "SYSTEM:F" `
-        /deny "Users:W" | Out-Null
-
-    icacls $lnkPath /grant "Everyone:F" | Out-Null
-    icacls $publicDesktop /grant "Everyone:F" | Out-Null
-}
-
-# Resolve shortcut target (headless)
-$ws = New-Object -ComObject WScript.Shell
-$sc = $ws.CreateShortcut($lnkPath)
-
-$targetPath = $sc.TargetPath
-$arguments  = $sc.Arguments
-
-# Execute resolved target as admin
-$taskCmd = "`"$targetPath`" $arguments"
-
-schtasks /create `
-    /tn $taskName `
-    /tr $taskCmd `
-    /sc once `
-    /st 00:00 `
-    /ru $user `
-    /rp $password `
-    /rl highest `
-    /f | Out-Null
-
-schtasks /run /tn $taskName | Out-Null
-
-Start-Sleep -Seconds 5
-
-schtasks /delete /tn $taskName /f | Out-Null
-
-
-# Vuln 3 - Unquoted Service Path
-if (-not (Get-Service -Name "GloboAgent" -ErrorAction SilentlyContinue)) {
-    $binPath = 'C:\Services\Bin Files\GloboAgent.exe'
-    # Create the service
-    New-Service -Name "GloboAgent" -BinaryPathName $binPath -DisplayName "Globomantics Agent" -Description "Building the ideal society." -StartupType Automatic
-}
-icacls "C:\Services\Bin Files\GloboAgent.exe" /deny "Remote Management Users:F"
-sc.exe stop GloboAgent
-timeout /t 3 > nul
-sc.exe start GloboAgent
-
-
-# Vuln 4 - Service Binary/Registry Writeable
-if (-not (Get-Service -Name "GloboCore" -ErrorAction SilentlyContinue)) {
-    $binPath = '"C:\Services\Bin Files\GloboCore.exe"'
-    # Create the service
-    New-Service -Name "GloboCore" -BinaryPathName $binPath -DisplayName "Globomantics Core" -Description "Building the ideal society." -StartupType Automatic
-}
-$acl = Get-Acl "HKLM:\SYSTEM\CurrentControlSet\Services\GloboCore"
-$rule = New-Object System.Security.AccessControl.RegistryAccessRule(
-    "Remote Management Users",
-    "FullControl",
-    "ContainerInherit,ObjectInherit",
-    "None",
-    "Allow"
-)
-$acl.SetAccessRule($rule)
-Set-Acl -Path "HKLM:\SYSTEM\CurrentControlSet\Services\GloboCore" -AclObject $acl
-sc.exe stop GloboCore
-timeout /t 3 > nul
-sc.exe start GloboCore
-
-    
-# Vuln 5 - Insecure File/Folder Permissions (change bat file)
-if(-not(Test-Path("C:\Scripts"))) {
-    New-Item -Path "C:\Scripts" -ItemType Directory
-    $bat_script = @'
-    @echo off
-    setlocal EnableDelayedExpansion
-
-    echo Initialising GloboNet Services...
-    ping -n 2 127.0.0.1 >nul
-
-    echo Verifying node integrity...
-    for %%G in (CoreSys AuthSvc NetStack ConfigSync) do (
-        echo   [OK] %%G module loaded.
-        ping -n 2 127.0.0.1 >nul
+function Write-DebugLog {
+    param (
+        [string]$Message,
+        [ValidateSet("INFO","WARN","ERROR")]
+        [string]$Level = "INFO"
     )
 
-    echo Applying baseline policies...
-    ping -n 3 127.0.0.1 >nul
-    echo Done.
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $entry = "[$timestamp][$Level] $Message"
 
-    endlocal
+    Add-Content -Path $debugPath -Value $entry
+}
+
+# ----------------------------
+# Helper: Isolated vuln runner
+# ----------------------------
+function Invoke-Vuln {
+    param (
+        [string]$Name,
+        [scriptblock]$Action
+    )
+
+    Write-DebugLog "`n[*] Configuring $Name"
+
+    try {
+        & $Action
+        Write-DebugLog "[+] $Name configured successfully"
+    }
+    catch {
+        Write-DebugLog "[!] $Name failed to configure"
+        Write-DebugLog $_.Exception.Message
+    }
+}
+
+# ----------------------------
+# Disable Defender (lab only)
+# ----------------------------
+Set-MpPreference -DisableRealtimeMonitoring $true
+
+# ----------------------------
+# Create Lab Accounts
+# ----------------------------
+$PasswordUser  = ConvertTo-SecureString "ItsColdOutside!" -AsPlainText -Force
+$PasswordAdmin = ConvertTo-SecureString "StartWarsWookie1!" -AsPlainText -Force
+
+if (-not (Get-LocalUser -Name "jack.frost.admin" -ErrorAction SilentlyContinue)) {
+    New-LocalUser `
+        -Name "jack.frost.admin" `
+        -Password $PasswordAdmin `
+        -FullName "Jack Frost Admin" `
+        -Description "Pass: StartWarsWookie1!"
+    Add-LocalGroupMember -Group "Administrators" -Member "jack.frost.admin"
+}
+
+if (-not (Get-LocalUser -Name "jack.frost" -ErrorAction SilentlyContinue)) {
+    New-LocalUser `
+        -Name "jack.frost" `
+        -Password $PasswordUser `
+        -FullName "Jack Frost"
+    Add-LocalGroupMember -Group "Remote Desktop Users" -Member "jack.frost"
+    Add-LocalGroupMember -Group "Remote Management Users" -Member "jack.frost"
+}
+
+# ============================================================
+# Vuln 1 – Credentials in Files
+# ============================================================
+Invoke-Vuln "Vuln 1 - Credentials in Files" {
+
+    Set-Content "C:\Windows\tasks.ps1" @'
+$Username = "jack.frost.admin"
+$Password = "StartWarsWookie1!"
+Invoke-Command -ComputerName 127.0.0.1 -Credential (
+    New-Object System.Management.Automation.PSCredential(
+        $Username,
+        (ConvertTo-SecureString $Password -AsPlainText -Force)
+    )
+)
 '@
 
-    Set-Content -Path "C:\Scripts\GloboScript.bat" -Value $bat_script
+    $psrl = "C:\Users\jack.frost\AppData\Roaming\Microsoft\Windows\PowerShell\PSReadLine"
+    New-Item $psrl -ItemType Directory -Force | Out-Null
+
+    Set-Content "$psrl\ConsoleHost_history.txt" @'
+New-StoredCredential -Target "globomantics/wks01" `
+-Username "jack.frost.admin" `
+-Password "StartWarsWookie1!" `
+-Persist LocalMachine
+'@
 }
 
-# create a vulnerable task to run every minute
-if (-not (Get-ScheduledTask -TaskName "GloboST" -ErrorAction SilentlyContinue)) {
-    $Action = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c C:\Scripts\GloboScript.bat"
-    $TimeTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddSeconds(10) -RepetitionInterval (New-TimeSpan -Minutes 1) -RepetitionDuration (New-TimeSpan -Days 31)
-    $StartupTrigger = New-ScheduledTaskTrigger -AtStartup
-    Register-ScheduledTask -TaskName "GloboST" -Action $Action -Trigger @($TimeTrigger, $StartupTrigger) -RunLevel Highest -User "SYSTEM"
+# ============================================================
+# Vuln 2 – Insecure Desktop Shortcut
+# ============================================================
+Invoke-Vuln "Vuln 2 – Insecure Desktop Shortcut" {
+
+    $binPath = "C:\Services\Bin Files\AdminTools.exe"
+    $desktop = "C:\Users\Default\Desktop"
+    $lnk     = Join-Path $desktop "Admin Tools.lnk"
+
+    if (-not (Test-Path $binPath)) {
+        Copy-Item "C:\Windows\System32\cmd.exe" $binPath -Force
+    }
+
+    $ws = New-Object -ComObject WScript.Shell
+    $sc = $ws.CreateShortcut($lnk)
+    $sc.TargetPath = $binPath
+    $sc.WorkingDirectory = "C:\Services\Bin Files"
+    $sc.Save()
+
+    icacls $lnk /grant "Everyone:F" | Out-Null
+    icacls $desktop /grant "Everyone:F" | Out-Null
 }
-icacls 'C:\Scripts\GloboScript.bat' /grant "Remote Management Users:(F)"
-icacls "C:\Windows\System32\Tasks" /grant "Users:(RX)"
 
-# Vuln 6 - Insecure Scheduled
-icacls 'C:\Windows\System32\Tasks\GloboST', /grant, "Remote Management Users:(F)"
+# ============================================================
+# Vuln 3 – Unquoted Service Path
+# ============================================================
+Invoke-Vuln "Vuln 3 - Unquoted Service Path" {
 
-# Vuln 9 - DLL Hijacking - Service
-if (-not (Get-Service -Name "GloboHostMgr" -ErrorAction SilentlyContinue)) {
-    $binPath = '"C:\Services\Bin Files\GloboHostMgr.exe"'
-    # Create the service
-    New-Service -Name "GloboHostMgr" -BinaryPathName $binPath -DisplayName "Globomantics Host Manager" -Description "Building the ideal society." -StartupType Automatic
+    if (-not (Get-Service "GloboAgent" -ErrorAction SilentlyContinue)) {
+        New-Service `
+            -Name "GloboAgent" `
+            -BinaryPathName "C:\Services\Bin Files\GloboAgent.exe" `
+            -DisplayName "Globomantics Agent" `
+            -StartupType Automatic
+    }
+
+    sc.exe stop GloboAgent | Out-Null
+    timeout /t 3 > nul
+    sc.exe start GloboAgent | Out-Null
 }
-icacls "C:\Services\Bin Files\GloboHostMgr.exe" /deny "Remote Management Users:F"
-sc.exe stop GloboHostMgr
-timeout /t 3 > nul
-sc.exe start GloboHostMgr
 
+# ============================================================
+# Vuln 4 – Writable Service Registry
+# ============================================================
+Invoke-Vuln "Vuln 4 - Writable Service Registry (GloboCore)" {
 
-# Vuln 10 - Token Impersonation
-if(-not (Get-WindowsFeature -Name Web-Server).Installed) {
-    Install-WindowsFeature Web-Server, Web-Asp-Net45, Web-Net-Ext45 -IncludeManagementTools
+    if (-not (Get-Service "GloboCore" -ErrorAction SilentlyContinue)) {
+        New-Service `
+            -Name "GloboCore" `
+            -BinaryPathName '"C:\Services\Bin Files\GloboCore.exe"' `
+            -DisplayName "Globomantics Core" `
+            -StartupType Automatic
+    }
+
+    $regPath = "HKLM:\SYSTEM\CurrentControlSet\Services\GloboCore"
+
+    $acl = Get-Acl $regPath
+    $rule = New-Object System.Security.AccessControl.RegistryAccessRule(
+        "Remote Management Users","FullControl","Allow"
+    )
+    $acl.SetAccessRule($rule)
+    Set-Acl $regPath $acl
+
+    sc.exe stop GloboCore | Out-Null
+    timeout /t 3 > nul
+    sc.exe start GloboCore | Out-Null
 }
-icacls "C:\inetpub\wwwroot" /grant "Remote Management Users:(F)"
+
+# ============================================================
+# Vuln 5 – Insecure Script Permissions
+# ============================================================
+Invoke-Vuln "Vuln 5 - Insecure Script Permissions" {
+
+    New-Item "C:\Scripts" -ItemType Directory -Force | Out-Null
+
+    Set-Content "C:\Scripts\GloboScript.bat" "@echo off
+echo Running Globo maintenance tasks...
+"
+
+    icacls "C:\Scripts\GloboScript.bat" /grant "Remote Management Users:(F)" | Out-Null
+}
+
+# ============================================================
+# Vuln 6 – Insecure Scheduled Task
+# ============================================================
+Invoke-Vuln "Vuln 6 - Insecure Scheduled Task" {
+
+    if (-not (Get-ScheduledTask "GloboST" -ErrorAction SilentlyContinue)) {
+        $action = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c C:\Scripts\GloboScript.bat"
+        $trigger = New-ScheduledTaskTrigger -AtStartup
+        Register-ScheduledTask -TaskName "GloboST" -Action $action -Trigger $trigger -RunLevel Highest -User "SYSTEM"
+    }
+
+    icacls "C:\Windows\System32\Tasks\GloboST" /grant "Remote Management Users:(F)" | Out-Null
+}
+
+# ============================================================
+# Vuln 9 – DLL Hijacking Service
+# ============================================================
+Invoke-Vuln "Vuln 9 - DLL Hijacking (Service)" {
+
+    if (-not (Get-Service "GloboHostMgr" -ErrorAction SilentlyContinue)) {
+        New-Service `
+            -Name "GloboHostMgr" `
+            -BinaryPathName '"C:\Services\Bin Files\GloboHostMgr.exe"' `
+            -DisplayName "Globomantics Host Manager" `
+            -StartupType Automatic
+    }
+
+    sc.exe stop GloboHostMgr | Out-Null
+    timeout /t 3 > nul
+    sc.exe start GloboHostMgr | Out-Null
+}
+
+# ============================================================
+# Vuln 10 – Token Impersonation (IIS)
+# ============================================================
+Invoke-Vuln "Vuln 10 - Token Impersonation" {
+
+    if (-not (Get-WindowsFeature Web-Server).Installed) {
+        Install-WindowsFeature Web-Server, Web-Asp-Net45 -IncludeManagementTools
+    }
+
+    icacls "C:\inetpub\wwwroot" /grant "Remote Management Users:(F)" | Out-Null
+}
+
+Write-DebugLog "`n[*] Lab configuration complete."
