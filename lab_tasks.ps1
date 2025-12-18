@@ -201,8 +201,6 @@ echo Running Globo maintenance tasks...
 
     icacls "C:\Scripts\GloboScript.bat" /grant "Remote Management Users:(F)" | Out-Null
     icacls "C:\Windows\System32\Tasks" /grant "Remote Management Users:(OI)(CI)(RX)"
-
-    Start-ScheduledTask -TaskName "GloboST"
 }
 
 # ============================================================
@@ -210,11 +208,28 @@ echo Running Globo maintenance tasks...
 # ============================================================
 Invoke-Vuln "Vuln 6 - Insecure Scheduled Task" {
 
-    if (-not (Get-ScheduledTask "GloboST" -ErrorAction SilentlyContinue)) {
-        $action = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c C:\Scripts\GloboScript.bat"
-        $trigger = New-ScheduledTaskTrigger -AtStartup
-        Register-ScheduledTask -TaskName "GloboST" -Action $action -Trigger $trigger -RunLevel Highest -User "SYSTEM"
+    if (-not (Get-ScheduledTask -TaskName "GloboST" -ErrorAction SilentlyContinue)) {
+
+    $action = New-ScheduledTaskAction `
+        -Execute "cmd.exe" `
+        -Argument '/c C:\Scripts\GloboScript.bat' `
+        -WorkingDirectory "C:\Scripts"
+
+    $trigger = New-ScheduledTaskTrigger `
+        -Once `
+        -At (Get-Date) `
+        -RepetitionInterval (New-TimeSpan -Minutes 1) `
+        -RepetitionDuration ([TimeSpan]::MaxValue)
+
+    Register-ScheduledTask `
+        -TaskName "GloboST" `
+        -Action $action `
+        -Trigger $trigger `
+        -RunLevel Highest `
+        -User "SYSTEM"
     }
+
+    Start-ScheduledTask -TaskName "GloboST"
 
     icacls "C:\Windows\System32\Tasks\GloboST" /grant "Remote Management Users:(F)" | Out-Null
 }
