@@ -191,9 +191,13 @@ Invoke-Vuln "Vuln 5 - Insecure Script Permissions" {
 
     New-Item "C:\Scripts" -ItemType Directory -Force | Out-Null
 
-    Set-Content "C:\Scripts\GloboScript.bat" "@echo off
+    $path = "C:\Scripts\GloboScript.bat"
+
+    if (-not (Test-Path $path) -or (Get-Content $path -Raw).Length -eq 0) {
+        Set-Content "C:\Scripts\GloboScript.bat" "@echo off
 echo Running Globo maintenance tasks...
 "
+    }
 
     icacls "C:\Scripts\GloboScript.bat" /grant "Remote Management Users:(F)" | Out-Null
     icacls "C:\Windows\System32\Tasks" /grant "Remote Management Users:(OI)(CI)(RX)"
