@@ -204,38 +204,48 @@ echo Running Globo maintenance tasks...
 }
 
 # ============================================================
-# Vuln 6 – Insecure Scheduled Task
+# Vuln 6 – Insecure Scheduled Task (FIXED)
 # ============================================================
 Invoke-Vuln "Vuln 6 - Insecure Scheduled Task" {
 
-    if (-not (Get-ScheduledTask -TaskName "GloboST" -ErrorAction SilentlyContinue)) {
-    
+    $taskName = "GloboST"
+    $taskPath = "\"
+    $taskFile = "C:\Windows\System32\Tasks\GloboST"
+
+    # --- Create task if missing ---
+    if (-not (schtasks /query /tn "$taskPath$taskName" 2>$null)) {
+
         $action = New-ScheduledTaskAction `
             -Execute "cmd.exe" `
             -Argument '/c C:\Scripts\GloboScript.bat' `
             -WorkingDirectory "C:\Scripts"
-    
+
         $trigger = New-ScheduledTaskTrigger `
             -Once `
             -At (Get-Date) `
             -RepetitionInterval (New-TimeSpan -Minutes 1) `
             -RepetitionDuration (New-TimeSpan -Days 999)
-    
+
         Register-ScheduledTask `
-            -TaskName "GloboST" `
+            -TaskName $taskName `
+            -TaskPath $taskPath `
             -Action $action `
             -Trigger $trigger `
             -RunLevel Highest `
             -User "SYSTEM"
     }
 
-    Start-ScheduledTask -TaskName "GloboST"
+    # --- Start it once ---
+    schtasks /run /tn "$taskPath$taskName" | Out-Null
 
-    schtasks /change /tn GloboST /sdset `
-    "D:(A;;FA;;;SY)(A;;FA;;;BA)(A;;FA;;;S-1-5-32-580)"
+    # --- Weaken TASK SDDL (scheduler layer) ---
+    schtasks /change /tn "$taskPath$taskName" /sdset `
+        "D:(A;;FA;;;SY)(A;;FA;;;BA)(A;;FA;;;S-1-5-32-580)"
 
-    icacls "C:\Windows\System32\Tasks\GloboST" /grant "Remote Management Users:(F)" | Out-Null
+    # --- Weaken FILE ACL (filesystem layer) ---
+    icacls $taskFile /grant "Remote Management Users:(R,W)" /T | Out-Null
 }
+
 
 # ============================================================
 # Vuln 9 – DLL Hijacking Service
