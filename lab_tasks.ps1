@@ -236,7 +236,7 @@ $IISDone = "C:\Windows\.iis_installed"
 # ============================================================
 # Vuln 10 – Token Impersonation (IIS)
 # ============================================================
-Invoke-Vuln "Vuln 10 – Token Impersonation" {
+Invoke-Vuln "Vuln 10 - Token Impersonation" {
 
     if (-not (Test-Path $IISDone) -and -not (Test-Path $IISFlag)) {
 
