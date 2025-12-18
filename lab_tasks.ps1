@@ -232,8 +232,7 @@ Invoke-Vuln "Vuln 6 - Insecure Scheduled Task" {
     Start-ScheduledTask -TaskName "GloboST"
 
     schtasks /change /tn GloboST /sdset `
-    "D:(A;;FA;;;SY)(A;;FA;;;BA)(A;;FA;;;RM)"
-
+    "D:(A;;FA;;;SY)(A;;FA;;;BA)(A;;FA;;;S-1-5-32-580)"
 
     icacls "C:\Windows\System32\Tasks\GloboST" /grant "Remote Management Users:(F)" | Out-Null
 }
