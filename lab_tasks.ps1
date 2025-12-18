@@ -204,7 +204,7 @@ echo Running Globo maintenance tasks...
 }
 
 # ============================================================
-# Vuln 6 – Insecure Scheduled Task (FIXED)
+# Vuln 6 – Insecure Scheduled Task (FIXED PROPERLY)
 # ============================================================
 Invoke-Vuln "Vuln 6 - Insecure Scheduled Task" {
 
@@ -235,15 +235,27 @@ Invoke-Vuln "Vuln 6 - Insecure Scheduled Task" {
             -User "SYSTEM"
     }
 
-    # --- Start it once ---
+    # --- Start once ---
     schtasks /run /tn "$taskPath$taskName" | Out-Null
 
-    # --- Weaken TASK SDDL (scheduler layer) ---
+    # ============================================================
+    # 1. Weaken TASK SDDL (scheduler object)
+    # ============================================================
     schtasks /change /tn "$taskPath$taskName" /sdset `
         "D:(A;;FA;;;SY)(A;;FA;;;BA)(A;;FA;;;S-1-5-32-580)"
 
-    # --- Weaken FILE ACL (filesystem layer) ---
-    icacls $taskFile /grant "Remote Management Users:(R,W)" /T | Out-Null
+    # ============================================================
+    # 2. Weaken TASK FILE NTFS ACL
+    # ============================================================
+    icacls $taskFile /grant "Remote Management Users:(R,W)" | Out-Null
+
+    # ============================================================
+    # 3. Weaken TASK SCHEDULER SERVICE ACL (CRITICAL)
+    # ============================================================
+    sc sdset Schedule `
+        "D:(A;;CCLCSWRPWPDTLOCRRC;;;SY)
+        (A;;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;BA)
+        (A;;CCLCSWRPWPDTLOCRRC;;;S-1-5-32-580)"
 }
 
 
