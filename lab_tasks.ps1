@@ -44,6 +44,17 @@ function Invoke-Vuln {
     catch {
         Write-DebugLog "[!] $Name failed to configure"
         Write-DebugLog $_.Exception.Message
+
+        # Pull recent SCM errors (last 60 seconds)
+        $scmEvents = Get-WinEvent -FilterHashtable @{
+            LogName      = 'System'
+            ProviderName = 'Service Control Manager'
+            StartTime    = (Get-Date).AddSeconds(-60)
+        } -ErrorAction SilentlyContinue
+    
+        foreach ($evt in $scmEvents) {
+            Write-DebugLog "SCM Event $($evt.Id): $($evt.Message)" "ERROR"
+        }
     }
 }
 
@@ -217,13 +228,19 @@ Invoke-Vuln "Vuln 9 - DLL Hijacking (Service)" {
     sc.exe start GloboHostMgr | Out-Null
 }
 
+$IISFlag = "C:\Windows\.iis_installing"
+
 # ============================================================
 # Vuln 10 – Token Impersonation (IIS)
 # ============================================================
 Invoke-Vuln "Vuln 10 - Token Impersonation" {
 
-    if (-not (Get-WindowsFeature Web-Server).Installed) {
-        Install-WindowsFeature Web-Server, Web-Asp-Net45 -IncludeManagementTools
+    if (-not (Get-WindowsFeature Web-Server).Installed -and -not (Test-Path $IISFlag)) {
+        Write-DebugLog "Starting IIS installation in background"
+        New-Item $IISFlag -ItemType File -Force | Out-Null
+        Start-Process powershell.exe `
+            -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command `"Install-WindowsFeature Web-Server,Web-Asp-Net45 -IncludeManagementTools`"" `
+            -WindowStyle Hidden
     }
 
     icacls "C:\inetpub\wwwroot" /grant "Remote Management Users:(F)" | Out-Null
