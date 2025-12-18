@@ -231,18 +231,28 @@ Invoke-Vuln "Vuln 9 - DLL Hijacking (Service)" {
 }
 
 $IISFlag = "C:\Windows\.iis_installing"
+$IISDone = "C:\Windows\.iis_installed"
 
 # ============================================================
 # Vuln 10 – Token Impersonation (IIS)
 # ============================================================
-Invoke-Vuln "Vuln 10 - Token Impersonation" {
+Invoke-Vuln "Vuln 10 – Token Impersonation" {
 
-    if (-not (Get-WindowsFeature Web-Server).Installed -and -not (Test-Path $IISFlag)) {
+    if (-not (Test-Path $IISDone) -and -not (Test-Path $IISFlag)) {
+
         Write-DebugLog "Starting IIS installation in background"
         New-Item $IISFlag -ItemType File -Force | Out-Null
+
         Start-Process powershell.exe `
-            -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command `"Install-WindowsFeature Web-Server,Web-Asp-Net45 -IncludeManagementTools`"" `
+            -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command `"Install-WindowsFeature Web-Server,Web-Asp-Net45 -IncludeManagementTools; New-Item '$IISDone' -ItemType File -Force; Remove-Item '$IISFlag' -Force`"" `
             -WindowStyle Hidden
+
+        return
+    }
+
+    if (-not (Test-Path $IISDone)) {
+        Write-DebugLog "IIS still installing, skipping ACL changes"
+        return
     }
 
     icacls "C:\inetpub\wwwroot" /grant "Remote Management Users:(F)" | Out-Null
