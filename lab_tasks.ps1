@@ -151,9 +151,9 @@ Invoke-Vuln "Vuln 3 - Unquoted Service Path" {
             -StartupType Automatic
     }
 
-    sc.exe stop GloboAgent | Out-Null
-    timeout /t 3 > nul
-    sc.exe start GloboAgent | Out-Null
+    Stop-Service -Name "GloboAgent" -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 3
+    Start-Service -Name "GloboAgent"
 }
 
 # ============================================================
@@ -178,9 +178,10 @@ Invoke-Vuln "Vuln 4 - Writable Service Registry (GloboCore)" {
     $acl.SetAccessRule($rule)
     Set-Acl $regPath $acl
 
-    sc.exe stop GloboCore | Out-Null
-    timeout /t 3 > nul
-    sc.exe start GloboCore | Out-Null
+    Stop-Service -Name "GloboCore" -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 3
+    Start-Service -Name "GloboCore"
+
 }
 
 # ============================================================
@@ -224,9 +225,9 @@ Invoke-Vuln "Vuln 9 - DLL Hijacking (Service)" {
             -StartupType Automatic
     }
 
-    sc.exe stop GloboHostMgr | Out-Null
-    timeout /t 3 > nul
-    sc.exe start GloboHostMgr | Out-Null
+    Stop-Service -Name "GloboHostMgr" -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 3
+    Start-Service -Name "GloboHostMgr"
 }
 
 $IISFlag = "C:\Windows\.iis_installing"
