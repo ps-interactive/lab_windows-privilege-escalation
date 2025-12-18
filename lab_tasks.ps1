@@ -201,6 +201,8 @@ echo Running Globo maintenance tasks...
 
     icacls "C:\Scripts\GloboScript.bat" /grant "Remote Management Users:(F)" | Out-Null
     icacls "C:\Windows\System32\Tasks" /grant "Remote Management Users:(OI)(CI)(RX)"
+
+    Start-ScheduledTask -TaskName "GloboST"
 }
 
 # ============================================================
