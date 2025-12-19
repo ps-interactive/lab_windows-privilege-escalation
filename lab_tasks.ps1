@@ -237,29 +237,26 @@ Invoke-Vuln "Vuln 6 - Insecure Scheduled Task" {
             -User "SYSTEM"
     }
 
-    # ------------------------------------------------------------
+        # ------------------------------------------------------------
     # 2. Use Task Scheduler COM API to modify Security Descriptor
-    #    (force RM to have Task All Access once)
+    #    (force Remote Management Users to Task All Access)
     # ------------------------------------------------------------
     $service = New-Object -ComObject "Schedule.Service"
     $service.Connect()
 
-    $rootFolder = $service.GetFolder("\")
-    $task       = $rootFolder.GetTask($taskName)
+    $task = $service.GetFolder("\").GetTask($taskName)
 
     $currentSDDL = $task.GetSecurityDescriptor(0xF)
-    $rmuAce      = "(A;;0x1f01ff;;;S-1-5-32-580)"  # 0x1f01ff = Task All Access
-    $existingRmu = "\(A;;[^;]+;;;RM\)"
 
-    # Strip any stale RM ACE, then append the right one once
-    if ($currentSDDL -match $existingRmu) {
-        $currentSDDL = $currentSDDL -replace $existingRmu, ""
-    }
+    # Remove every existing RM ACE so we can cleanly append our own
+    $currentSDDL = $currentSDDL -replace '\(A;;[^;]+;;;RM\)', ''
 
-    if ($currentSDDL -notmatch ";;;RM") {
-        $newSDDL = $currentSDDL + $rmuAce
-        $task.SetSecurityDescriptor($newSDDL, 0)
-    }
+    # Task All Access mask (0x1f01ff) for S-1-5-32-580
+    $rmuAce = "(A;;0x1f01ff;;;S-1-5-32-580)"
+
+    $newSDDL = $currentSDDL + $rmuAce
+    $task.SetSecurityDescriptor($newSDDL, 0)
+
 
     # ------------------------------------------------------------
     # 3. Weaken NTFS permissions on task file
