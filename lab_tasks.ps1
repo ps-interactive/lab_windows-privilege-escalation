@@ -250,14 +250,13 @@ Invoke-Vuln "Vuln 6 - Insecure Scheduled Task" {
     # Read existing SDDL
     $currentSDDL = $task.GetSecurityDescriptor(0xF)
 
-    # ACE for Remote Management Users
-    $rmuAce = "(A;;GRGXGWWDWO;;;S-1-5-32-580)"
+    # ACE for Remote Management Users (S-1-5-32-580)
+    # Permissions: GRGXGW = Generic Read, Generic Execute, Generic Write
+    $rmuAce = "(A;;GRGXGW;;;S-1-5-32-580)"
 
     # Only add if not already present
     if ($currentSDDL -notmatch "S-1-5-32-580") {
-
-        $newSDDL = $currentSDDL -replace "\)$", "$rmuAce)"
-
+        $newSDDL = $currentSDDL + $rmuAce
         $task.SetSecurityDescriptor($newSDDL, 0)
     }
 
@@ -271,7 +270,6 @@ Invoke-Vuln "Vuln 6 - Insecure Scheduled Task" {
     # ------------------------------------------------------------
     schtasks /run /tn "$taskPath$taskName" | Out-Null
 }
-
 
 # ============================================================
 # Vuln 9 – DLL Hijacking Service
