@@ -118,7 +118,7 @@ New-StoredCredential -Target "globomantics/wks01" `
 # ============================================================
 # Vuln 2 – Insecure Desktop Shortcut
 # ============================================================
-Invoke-Vuln "Vuln 2 – Insecure Desktop Shortcut" {
+Invoke-Vuln "Vuln 2 - Insecure Desktop Shortcut" {
 
     $binPath = "C:\Services\Bin Files\AdminTools.exe"
     $desktop = "C:\Users\Default\Desktop"
