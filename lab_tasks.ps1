@@ -204,70 +204,58 @@ echo Running Globo maintenance tasks...
 }
 
 # ============================================================
-# Vuln 6 – Insecure Scheduled Task (COM / SDDL – CORRECT)
+# Vuln 6 – Insecure Scheduled Task
 # ============================================================
 Invoke-Vuln "Vuln 6 - Insecure Scheduled Task" {
 
-    $taskName = "GloboST"
-    $taskPath = "\"
-    $taskFile = "C:\Windows\System32\Tasks\GloboST"
+    if (-not (schtasks /query /tn "GloboST" 2>$null)) {
 
-    # ------------------------------------------------------------
-    # 1. Create task if it does not exist
-    # ------------------------------------------------------------
-    if (-not (schtasks /query /tn "$taskPath$taskName" 2>$null)) {
+        $xmlPath = "C:\Windows\Temp\GloboST.xml"
 
-        $action = New-ScheduledTaskAction `
-            -Execute "cmd.exe" `
-            -Argument '/c C:\Scripts\GloboScript.bat' `
-            -WorkingDirectory "C:\Scripts"
+        Set-Content -Path $xmlPath -Encoding Unicode -Value @'
+<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.4"
+      xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
 
-        $trigger = New-ScheduledTaskTrigger `
-            -Once `
-            -At (Get-Date) `
-            -RepetitionInterval (New-TimeSpan -Minutes 1) `
-            -RepetitionDuration (New-TimeSpan -Days 999)
+  <SecurityDescriptor>
+    D:(A;;FA;;;SY)(A;;FA;;;BA)(A;;GA;;;S-1-5-32-580)
+  </SecurityDescriptor>
 
-        Register-ScheduledTask `
-            -TaskName $taskName `
-            -TaskPath $taskPath `
-            -Action $action `
-            -Trigger $trigger `
-            -RunLevel Highest `
-            -User "SYSTEM"
+  <RegistrationInfo>
+    <Author>Globomantics</Author>
+  </RegistrationInfo>
+
+  <Principals>
+    <Principal id="System">
+      <UserId>S-1-5-18</UserId>
+      <LogonType>ServiceAccount</LogonType>
+      <RunLevel>HighestAvailable</RunLevel>
+    </Principal>
+  </Principals>
+
+  <Triggers>
+    <BootTrigger />
+  </Triggers>
+
+  <Actions Context="System">
+    <Exec>
+      <Command>cmd.exe</Command>
+      <Arguments>/c C:\Scripts\GloboScript.bat</Arguments>
+    </Exec>
+  </Actions>
+
+</Task>
+'@
+
+        schtasks /create `
+            /tn "GloboST" `
+            /xml $xmlPath `
+            /f
+
+        schtasks /run /tn "GloboST"
     }
-
-        # ------------------------------------------------------------
-    # 2. Use Task Scheduler COM API to modify Security Descriptor
-    #    (force Remote Management Users to Task All Access)
-    # ------------------------------------------------------------
-    $service = New-Object -ComObject "Schedule.Service"
-    $service.Connect()
-
-    $task = $service.GetFolder("\").GetTask($taskName)
-
-    $currentSDDL = $task.GetSecurityDescriptor(0xF)
-
-    # Remove every existing RM ACE so we can cleanly append our own
-    $currentSDDL = $currentSDDL -replace '\(A;;[^;]+;;;RM\)', ''
-
-    # Task All Access mask (0x1f01ff) for S-1-5-32-580
-    $rmuAce = "(A;;0x1f01ff;;;S-1-5-32-580)"
-
-    $newSDDL = $currentSDDL + $rmuAce
-    $task.SetSecurityDescriptor($newSDDL, 0)
-
-
-    # ------------------------------------------------------------
-    # 3. Weaken NTFS permissions on task file
-    # ------------------------------------------------------------
-    icacls $taskFile /grant "Remote Management Users:(R,W)" | Out-Null
-
-    # ------------------------------------------------------------
-    # 4. Start task once
-    # ------------------------------------------------------------
-    schtasks /run /tn "$taskPath$taskName" | Out-Null
 }
+
 
 # ============================================================
 # Vuln 9 – DLL Hijacking Service
