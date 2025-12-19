@@ -204,7 +204,7 @@ echo Running Globo maintenance tasks...
 }
 
 # ============================================================
-# Vuln 6 – Insecure Scheduled Task (FIXED PROPERLY)
+# Vuln 6 – Insecure Scheduled Task (COM / SDDL – CORRECT)
 # ============================================================
 Invoke-Vuln "Vuln 6 - Insecure Scheduled Task" {
 
@@ -212,7 +212,9 @@ Invoke-Vuln "Vuln 6 - Insecure Scheduled Task" {
     $taskPath = "\"
     $taskFile = "C:\Windows\System32\Tasks\GloboST"
 
-    # --- Create task if missing ---
+    # ------------------------------------------------------------
+    # 1. Create task if it does not exist
+    # ------------------------------------------------------------
     if (-not (schtasks /query /tn "$taskPath$taskName" 2>$null)) {
 
         $action = New-ScheduledTaskAction `
@@ -235,27 +237,39 @@ Invoke-Vuln "Vuln 6 - Insecure Scheduled Task" {
             -User "SYSTEM"
     }
 
-    # --- Start once ---
-    schtasks /run /tn "$taskPath$taskName" | Out-Null
+    # ------------------------------------------------------------
+    # 2. Use Task Scheduler COM API to modify Security Descriptor
+    #    (This is the OSDeploy pattern)
+    # ------------------------------------------------------------
+    $service = New-Object -ComObject "Schedule.Service"
+    $service.Connect()
 
-    # ============================================================
-    # 1. Weaken TASK SDDL (scheduler object)
-    # ============================================================
-    schtasks /change /tn "$taskPath$taskName" /sdset `
-        "D:(A;;FA;;;SY)(A;;FA;;;BA)(A;;FA;;;S-1-5-32-580)"
+    $rootFolder = $service.GetFolder("\")
+    $task       = $rootFolder.GetTask($taskName)
 
-    # ============================================================
-    # 2. Weaken TASK FILE NTFS ACL
-    # ============================================================
+    # Read existing SDDL
+    $currentSDDL = $task.GetSecurityDescriptor(0xF)
+
+    # ACE for Remote Management Users
+    $rmuAce = "(A;;GRGXGWWDWO;;;S-1-5-32-580)"
+
+    # Only add if not already present
+    if ($currentSDDL -notmatch "S-1-5-32-580") {
+
+        $newSDDL = $currentSDDL -replace "\)$", "$rmuAce)"
+
+        $task.SetSecurityDescriptor($newSDDL, 0)
+    }
+
+    # ------------------------------------------------------------
+    # 3. Weaken NTFS permissions on task file
+    # ------------------------------------------------------------
     icacls $taskFile /grant "Remote Management Users:(R,W)" | Out-Null
 
-    # ============================================================
-    # 3. Weaken TASK SCHEDULER SERVICE ACL (CRITICAL)
-    # ============================================================
-    sc sdset Schedule `
-        "D:(A;;CCLCSWRPWPDTLOCRRC;;;SY)
-        (A;;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;BA)
-        (A;;CCLCSWRPWPDTLOCRRC;;;S-1-5-32-580)"
+    # ------------------------------------------------------------
+    # 4. Start task once
+    # ------------------------------------------------------------
+    schtasks /run /tn "$taskPath$taskName" | Out-Null
 }
 
 
