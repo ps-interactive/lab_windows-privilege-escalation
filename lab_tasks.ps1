@@ -239,7 +239,7 @@ Invoke-Vuln "Vuln 6 - Insecure Scheduled Task" {
 
     # ------------------------------------------------------------
     # 2. Use Task Scheduler COM API to modify Security Descriptor
-    #    (This is the OSDeploy pattern)
+    #    (force RM to have Task All Access once)
     # ------------------------------------------------------------
     $service = New-Object -ComObject "Schedule.Service"
     $service.Connect()
@@ -247,13 +247,15 @@ Invoke-Vuln "Vuln 6 - Insecure Scheduled Task" {
     $rootFolder = $service.GetFolder("\")
     $task       = $rootFolder.GetTask($taskName)
 
-    # Read existing SDDL
     $currentSDDL = $task.GetSecurityDescriptor(0xF)
+    $rmuAce      = "(A;;0x1f01ff;;;S-1-5-32-580)"  # 0x1f01ff = Task All Access
+    $existingRmu = "\(A;;[^;]+;;;RM\)"
 
-    # ACE for Remote Management Users (S-1-5-32-580)
-    $rmuAce = "(A;;0x1f01ff;;;S-1-5-32-580)"
+    # Strip any stale RM ACE, then append the right one once
+    if ($currentSDDL -match $existingRmu) {
+        $currentSDDL = $currentSDDL -replace $existingRmu, ""
+    }
 
-    # Only add if not already present
     if ($currentSDDL -notmatch ";;;RM") {
         $newSDDL = $currentSDDL + $rmuAce
         $task.SetSecurityDescriptor($newSDDL, 0)
