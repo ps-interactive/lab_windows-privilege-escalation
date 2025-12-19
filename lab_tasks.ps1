@@ -252,7 +252,7 @@ Invoke-Vuln "Vuln 6 - Insecure Scheduled Task" {
 
     # ACE for Remote Management Users (S-1-5-32-580)
     # Permissions: GRGXGW = Generic Read, Generic Execute, Generic Write
-    $rmuAce = "(A;;GRGXGW;;;S-1-5-32-580)"
+    $rmuAce = "(A;;GA;;;S-1-5-32-580)"
 
     # Only add if not already present
     if ($currentSDDL -notmatch "S-1-5-32-580") {
