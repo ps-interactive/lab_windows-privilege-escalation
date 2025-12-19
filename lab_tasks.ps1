@@ -217,12 +217,12 @@ Invoke-Vuln "Vuln 6 - Insecure Scheduled Task" {
 <Task version="1.4"
       xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
 
-  <SecurityDescriptor>
-    D:(A;;FA;;;SY)(A;;FA;;;BA)(A;;GA;;;S-1-5-32-580)
-  </SecurityDescriptor>
-
   <RegistrationInfo>
     <Author>Globomantics</Author>
+
+    <SecurityDescriptor>
+      D:(A;;FA;;;SY)(A;;FA;;;BA)(A;;GA;;;S-1-5-32-580)
+    </SecurityDescriptor>
   </RegistrationInfo>
 
   <Principals>
