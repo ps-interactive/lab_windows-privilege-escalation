@@ -251,11 +251,10 @@ Invoke-Vuln "Vuln 6 - Insecure Scheduled Task" {
     $currentSDDL = $task.GetSecurityDescriptor(0xF)
 
     # ACE for Remote Management Users (S-1-5-32-580)
-    # Permissions: GRGXGW = Generic Read, Generic Execute, Generic Write
-    $rmuAce = "(A;;GA;;;S-1-5-32-580)"
+    $rmuAce = "(A;;0x1f01ff;;;S-1-5-32-580)"
 
     # Only add if not already present
-    if ($currentSDDL -notmatch "S-1-5-32-580") {
+    if ($currentSDDL -notmatch ";;;RM") {
         $newSDDL = $currentSDDL + $rmuAce
         $task.SetSecurityDescriptor($newSDDL, 0)
     }
