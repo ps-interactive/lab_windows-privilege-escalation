@@ -273,7 +273,7 @@ Invoke-Vuln "Vuln 6 - Image File Execution Abuse" {
     
     $taskName = "GloboAdminExplorerTrigger"
 
-    $username = ".\jack.frost.admin"
+    $username = "PS-WIN-1\jack.frost.admin"
     $password = "StartWarsWookie1!"
     
     # Command to run (your exact logic)
