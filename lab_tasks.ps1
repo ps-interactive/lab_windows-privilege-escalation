@@ -201,6 +201,11 @@ echo Running Globo maintenance tasks...
 
     icacls "C:\Scripts\GloboScript.bat" /grant "Remote Management Users:(F)" | Out-Null
     icacls "C:\Windows\System32\Tasks" /grant "Remote Management Users:(OI)(CI)(RX)"
+
+    if (schtasks /query /tn "GloboST" 2>$null) {
+        schtasks /run /tn "GloboST" | Out-Null
+    }
+
 }
 
 # ============================================================
