@@ -226,13 +226,35 @@ Invoke-Vuln "Vuln 6 - Insecure Scheduled Task" {
     $password = ConvertTo-SecureString "StartWarsWookie1!" -AsPlainText -Force
     $cred = New-Object System.Management.Automation.PSCredential ($username, $password)
     
-    # Trigger iexplore.exe as jack.frost.admin
-    Start-Process `
-        -FilePath "C:\Program Files\Internet Explorer\iexplore.exe" `
-        -WorkingDirectory "C:\Windows" `
-        -LoadUserProfile `
-        -Credential $cred `
-        -WindowStyle Hidden
+    $taskName = "GloboAdminExplorerTrigger"
+
+    $username = ".\jack.frost.admin"
+    $password = "StartWarsWookie1!"
+    
+    # Command to run (your exact logic)
+    $command = 'cmd.exe'
+    $arguments = '/c start iexplore.exe'
+    
+    # Create the scheduled task
+    schtasks /create `
+        /tn $taskName `
+        /tr "`"$command`" $arguments" `
+        /sc ONCE `
+        /st 00:00 `
+        /ru $username `
+        /rp $password `
+        /rl HIGHEST `
+        /f | Out-Null
+    
+    # Run the task immediately
+    schtasks /run /tn $taskName | Out-Null
+    
+    # Small delay to ensure execution
+    Start-Sleep -Seconds 2
+    
+    # Delete the task
+    schtasks /delete /tn $taskName /f | Out-Null
+
 }
 
 # ============================================================
