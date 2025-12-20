@@ -229,6 +229,8 @@ Invoke-Vuln "Vuln 6 - Insecure Scheduled Task" {
     # Trigger iexplore.exe as jack.frost.admin
     Start-Process `
         -FilePath "C:\Program Files\Internet Explorer\iexplore.exe" `
+        -WorkingDirectory "C:\Windows" `
+        -LoadUserProfile `
         -Credential $cred `
         -WindowStyle Hidden
 }
