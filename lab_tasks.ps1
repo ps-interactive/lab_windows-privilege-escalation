@@ -120,35 +120,61 @@ New-StoredCredential -Target "globomantics/wks01" `
 # ============================================================
 Invoke-Vuln "Vuln 2 - Insecure Desktop Shortcut" {
 
-    $binPath = "C:\Services\Bin Files\AdminTools.exe"
-    $desktop = "C:\Users\Default\Desktop"
-    $lnk     = Join-Path $desktop "Admin Tools.lnk"
-
-    if (-not (Test-Path $binPath)) {
-        Copy-Item "C:\Windows\System32\cmd.exe" $binPath -Force
-    }
-
-    $ws = New-Object -ComObject WScript.Shell
-    $sc = $ws.CreateShortcut($lnk)
-    $sc.TargetPath = $binPath
-    $sc.WorkingDirectory = "C:\Services\Bin Files"
-    $sc.Save()
-
-    icacls $lnk /grant "Everyone:F" | Out-Null
-    icacls $desktop /grant "Everyone:F" | Out-Null
-
-    $resolved = Resolve-Shortcut -LnkPath $lnk
-
-    $Password = ConvertTo-SecureString "StartWarsWookie1!" -AsPlainText -Force
-    $Cred = New-Object System.Management.Automation.PSCredential(
-        ".\jack.frost.admin",
-        $Password
-    )
+    $binPath        = "C:\Services\Bin Files\AdminTools.exe"
+    $publicDesktop  = "C:\Users\Default\Desktop"
+    $lnkPath        = Join-Path $publicDesktop "Admin Tools.lnk"
     
-    Start-Process -FilePath $resolved.TargetPath `
-        -WorkingDirectory $resolved.WorkingDirectory `
-        -WindowStyle ($resolved.WindowStyle -as [System.Diagnostics.ProcessWindowStyle]) `
-        -Credential $Cred
+    $user     = "ps-win-1\jack.frost.admin"
+    $password = "StartWarsWookie1!"
+    $taskName = "RunAdminTools_FromShortcut"
+    
+    
+    # Create vulnerable binary + shortcut
+    if (-not (Test-Path $binPath)) {
+    
+        Copy-Item "C:\Windows\System32\cmd.exe" $binPath -Force
+    
+        $ws = New-Object -ComObject WScript.Shell
+        $sc = $ws.CreateShortcut($lnkPath)
+        $sc.TargetPath       = $binPath
+        $sc.WorkingDirectory = "C:\Services\Bin Files"
+        $sc.WindowStyle      = 1
+        $sc.Description      = "Admin Tools"
+        $sc.Save()
+    
+        icacls $binPath /inheritance:r `
+            /grant:r "Administrators:F" "SYSTEM:F" `
+            /deny "Users:W" | Out-Null
+    
+        icacls $lnkPath /grant "Everyone:F" | Out-Null
+        icacls $publicDesktop /grant "Everyone:F" | Out-Null
+    }
+    
+    # Resolve shortcut target (headless)
+    $ws = New-Object -ComObject WScript.Shell
+    $sc = $ws.CreateShortcut($lnkPath)
+    
+    $targetPath = $sc.TargetPath
+    $arguments  = $sc.Arguments
+    
+    # Execute resolved target as admin
+    $taskCmd = "`"$targetPath`" $arguments"
+    
+    schtasks /create `
+        /tn $taskName `
+        /tr $taskCmd `
+        /sc once `
+        /st 00:00 `
+        /ru $user `
+        /rp $password `
+        /rl highest `
+        /f | Out-Null
+    
+    schtasks /run /tn $taskName | Out-Null
+    
+    Start-Sleep -Seconds 5
+    
+    schtasks /delete /tn $taskName /f | Out-Null
 
 }
 
