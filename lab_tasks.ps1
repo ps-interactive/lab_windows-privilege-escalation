@@ -206,7 +206,7 @@ echo Running Globo maintenance tasks...
 # ============================================================
 # Vuln 6 – Image File Execution Abuse
 # ============================================================
-Invoke-Vuln "Vuln 6 - Insecure Scheduled Task" {
+Invoke-Vuln "Vuln 6 - Image File Execution Abuse" {
     $ifeoPath = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\iexplore.exe"
     
     # Ensure the key exists
