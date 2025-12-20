@@ -204,58 +204,34 @@ echo Running Globo maintenance tasks...
 }
 
 # ============================================================
-# Vuln 6 – Insecure Scheduled Task
+# Vuln 6 – Image File Execution Abuse
 # ============================================================
 Invoke-Vuln "Vuln 6 - Insecure Scheduled Task" {
-
-    if (-not (schtasks /query /tn "GloboST" 2>$null)) {
-
-        $xmlPath = "C:\Windows\Temp\GloboST.xml"
-
-        Set-Content -Path $xmlPath -Encoding Unicode -Value @'
-<?xml version="1.0" encoding="UTF-16"?>
-<Task version="1.4"
-      xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
-
-  <RegistrationInfo>
-    <Author>Globomantics</Author>
-
-    <SecurityDescriptor>
-      D:(A;;FA;;;SY)(A;;FA;;;BA)(A;;GA;;;S-1-5-32-580)
-    </SecurityDescriptor>
-  </RegistrationInfo>
-
-  <Principals>
-    <Principal id="System">
-      <UserId>S-1-5-18</UserId>
-      <LogonType>ServiceAccount</LogonType>
-      <RunLevel>HighestAvailable</RunLevel>
-    </Principal>
-  </Principals>
-
-  <Triggers>
-    <BootTrigger />
-  </Triggers>
-
-  <Actions Context="System">
-    <Exec>
-      <Command>cmd.exe</Command>
-      <Arguments>/c C:\Scripts\GloboScript.bat</Arguments>
-    </Exec>
-  </Actions>
-
-</Task>
-'@
-
-        schtasks /create `
-            /tn "GloboST" `
-            /xml $xmlPath `
-            /f
-
-        schtasks /run /tn "GloboST"
+    $ifeoPath = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\iexplore.exe"
+    
+    # Ensure the key exists
+    if (-not (Test-Path $ifeoPath)) {
+        New-Item -Path $ifeoPath -Force | Out-Null
     }
-}
+    
+    # Set the Debugger value
+    New-ItemProperty `
+        -Path $ifeoPath `
+        -Name "Debugger" `
+        -PropertyType String `
+        -Value 'C:\Windows\System32\rundll32.exe "C:\Services\Bin Files\Debugger.dll",Attach' `
+        -Force | Out-Null
 
+    $username = ".\jack.frost.admin"
+    $password = ConvertTo-SecureString "StartWarsWookie1!" -AsPlainText -Force
+    $cred = New-Object System.Management.Automation.PSCredential ($username, $password)
+    
+    # Trigger iexplore.exe as jack.frost.admin
+    Start-Process `
+        -FilePath "C:\Program Files\Internet Explorer\iexplore.exe" `
+        -Credential $cred `
+        -WindowStyle Hidden
+}
 
 # ============================================================
 # Vuln 9 – DLL Hijacking Service
