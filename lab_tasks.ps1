@@ -136,6 +136,20 @@ Invoke-Vuln "Vuln 2 - Insecure Desktop Shortcut" {
 
     icacls $lnk /grant "Everyone:F" | Out-Null
     icacls $desktop /grant "Everyone:F" | Out-Null
+
+    $resolved = Resolve-Shortcut -LnkPath $lnk
+
+    $Password = ConvertTo-SecureString "StartWarsWookie1!" -AsPlainText -Force
+    $Cred = New-Object System.Management.Automation.PSCredential(
+        ".\jack.frost.admin",
+        $Password
+    )
+    
+    Start-Process -FilePath $resolved.TargetPath `
+        -WorkingDirectory $resolved.WorkingDirectory `
+        -WindowStyle ($resolved.WindowStyle -as [System.Diagnostics.ProcessWindowStyle]) `
+        -Credential $Cred
+
 }
 
 # ============================================================
