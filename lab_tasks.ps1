@@ -242,10 +242,13 @@ echo Running Globo maintenance tasks...
     icacls "C:\Scripts\GloboScript.bat" /grant "Remote Management Users:(F)" | Out-Null
     icacls "C:\Windows\System32\Tasks" /grant "Remote Management Users:(OI)(CI)(RX)"
 
-    if (schtasks /query /tn "GloboST" 2>$null) {
-        schtasks /run /tn "GloboST" | Out-Null
+    # create a vulnerable task to run every minute
+    if (-not (Get-ScheduledTask -TaskName "GloboST" -ErrorAction SilentlyContinue)) {
+        $Action = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c C:\Scripts\GloboScript.bat"
+        $TimeTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddSeconds(10) -RepetitionInterval (New-TimeSpan -Minutes 1) -RepetitionDuration (New-TimeSpan -Days 31)
+        $StartupTrigger = New-ScheduledTaskTrigger -AtStartup
+        Register-ScheduledTask -TaskName "GloboST" -Action $Action -Trigger @($TimeTrigger, $StartupTrigger) -RunLevel Highest -User "SYSTEM"
     }
-
 }
 
 # ============================================================
